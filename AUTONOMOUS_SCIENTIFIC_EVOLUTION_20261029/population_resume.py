@@ -171,12 +171,18 @@ def historical_input_compat(mods, target_root):
                       'science_sha256':data['science_sha256']}
             historical.append({'id':sid,**info})
         pinned['authorized_historical_records']=historical
-        return {
+        payload = {
             'pinned_input':pinned,
             'own_prior_steps':prior,
             'research_capability_state':research_worker_context(j,wid,tool_capabilities),
             'research_action': 'Make next scientific judgement. If missing primary evidence would materially change the research, consider actual available literature/data tools. Search is a scientific option, never a quota; record a causal scientific delta from any retrieved text.'
         }
+        # Preserve native continuity when the historical peer-reader is used.
+        # The Work carries a digest-pinned rejected AI proposal, not evidence.
+        if w.get('opportunity_input_ids'):
+            from e2core.research_continuity import worker_handoff
+            payload['explicit_unregistered_opportunity_handoff'] = worker_handoff(w)
+        return payload
 
     mods.spe._ORIGINAL_WORKER_INPUT=compatible_input
     try:

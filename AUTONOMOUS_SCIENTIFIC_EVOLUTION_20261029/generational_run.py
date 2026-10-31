@@ -31,6 +31,83 @@ def modules():
         lc=lc,spe=spe,v3=v3,v4=v4)
 
 
+NATIVE_PIN_NAME = 'NATIVE_RUNTIME_SOURCE_PIN.json'
+NATIVE_SOURCE_PROTOCOL = 'M16_NATIVE_EXECUTION_SOURCE_V1'
+
+
+def _native_inventory():
+    """Hash actual local Python source at the verified development worktree.
+
+    This is a new-run provenance pin. Historical V3 source pins are untouched.
+    Do not infer source authority from Git HEAD alone: local uncommitted code
+    can exist during the required test-before-commit development workflow.
+    """
+    repo = Path(__file__).resolve().parents[1]
+    found = {}
+    for subdir in ('runtime', 'AUTONOMOUS_SCIENTIFIC_EVOLUTION_20261029'):
+        folder = repo / subdir
+        if not folder.is_dir():
+            raise RuntimeError('NATIVE_SOURCE_DIRECTORY_MISSING:' + subdir)
+        for file in sorted(folder.rglob('*.py')):
+            if file.is_symlink():
+                raise RuntimeError('NATIVE_SOURCE_SYMLINK_REJECTED:' + str(file))
+            key = file.relative_to(repo).as_posix()
+            found[key] = hashlib.sha256(file.read_bytes()).hexdigest()
+    if not found:
+        raise RuntimeError('NATIVE_SOURCE_INVENTORY_EMPTY')
+    return repo, found
+
+
+def pin_native_source(experiment):
+    """Create a single immutable source pin in a NEW autonomous experiment."""
+    exp = Path(experiment).expanduser().resolve()
+    if not (exp / 'persistent.json').is_file():
+        raise RuntimeError('NATIVE_PIN_REQUIRES_INITIALIZED_PERSISTENT_EXPERIMENT')
+    repo, files = _native_inventory()
+    record = {'protocol': NATIVE_SOURCE_PROTOCOL, 'repository': str(repo),
+              'files': files, 'source_verification': 'EXACT_PYTHON_BYTES_SHA256',
+              'not_historical_v3_replay': True, 'not_scientific_certification': True}
+    save_new(exp / NATIVE_PIN_NAME, record)
+    return record
+
+
+def verify_runtime_source(mods, research_root):
+    """New-run pin when present; otherwise preserve exact historical V3 guard.
+
+    No V3 hash is rewritten or silently accepted as the new native source.
+    Research roots are nested below the autonomous experiment directory.
+    """
+    target = Path(research_root).expanduser().resolve()
+    found = next((p / NATIVE_PIN_NAME for p in (target, *target.parents)
+                  if (p / NATIVE_PIN_NAME).is_file()), None)
+    if found is None:
+        mods.v3.source_code_guard()
+        return {'source_contract': 'HISTORICAL_V3_PINNED_SOURCE'}
+    pinned = json.loads(found.read_text(encoding='utf8'))
+    repo, observed = _native_inventory()
+    if (pinned.get('protocol') != NATIVE_SOURCE_PROTOCOL
+            or pinned.get('repository') != str(repo)
+            or pinned.get('files') != observed):
+        raise RuntimeError('NATIVE_EXECUTION_SOURCE_PIN_MISMATCH')
+    # Import resolution is distinct from file hashing: reject overlay modules.
+    for name in ('e2core.core', 'e2core.engine', 'e2core.provider',
+                 'e2core.research_continuity', 'scientific_problem_evolution',
+                 'scientific_closed_loop_v3', 'scientific_research_readiness_v4',
+                 'generational_run', 'population_run', 'persistent_population',
+                 'autonomous_population', 'population_resume'):
+        loaded = sys.modules.get(name)
+        if loaded is None:
+            continue
+        location = Path(loaded.__file__).resolve()
+        if not location.is_relative_to(repo):
+            raise RuntimeError('NATIVE_EXECUTION_MODULE_OVERLAY:' + name)
+        if location.relative_to(repo).as_posix() not in observed:
+            raise RuntimeError('NATIVE_EXECUTION_MODULE_NOT_PINNED:' + name)
+    return {'source_contract': NATIVE_SOURCE_PROTOCOL,
+            'pinned_python_file_count': len(observed),
+            'pin_sha256': hashlib.sha256(found.read_bytes()).hexdigest()}
+
+
 def save_new(path, obj):
     path=Path(path)
     path.parent.mkdir(parents=True,exist_ok=True)
@@ -191,7 +268,7 @@ def drive(mods,root,args,phase):
     # New clean Journal roots cannot call v3.run(): v3.run() assumes its historical
     # NVT recovery receipt. Instead use the SAME V4 + V3 runtime hooks on the
     # existing feedback research engine directly.
-    mods.v3.source_code_guard()
+    verify_runtime_source(mods, root)
     if not args.paid or os.environ.get('FAKG_RESEARCH_ALLOW_PAID')!='YES':
         raise RuntimeError('PAID_CALLS_REQUIRE_--paid_AND_FAKG_RESEARCH_ALLOW_PAID=YES')
     if args.max_new_calls<1 or args.slice_budget<1:raise RuntimeError('BAD_BUDGET')

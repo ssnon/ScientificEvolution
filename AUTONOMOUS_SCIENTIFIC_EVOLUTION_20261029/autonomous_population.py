@@ -142,6 +142,7 @@ def meta_path(experiment):return Path(experiment)/'AUTONOMOUS_META'
 def bootstrap(args):
     if args.paid:fail('BOOTSTRAP_MUST_BE_NO_PAID')
     pp.init(SimpleNamespace(source_root=args.source_root,out=args.out))
+    pop.gen.pin_native_source(args.out)
     init_meta(SimpleNamespace(experiment=args.out,paid=False))
 
 def init_meta(args):
@@ -159,6 +160,7 @@ def init_meta(args):
         'all_study_root_science_remains_unverified':True})
     pp.newwrite(root/'autonomous.json',{'protocol':PROTO,'experiment':str(root),
          'meta_root':str(metadata), 'persistent_manifest_sha256':mods.sha((root/'persistent.json').read_bytes()),
+         'native_source_pin_sha256':mods.sha((root/pop.gen.NATIVE_PIN_NAME).read_bytes()) if (root/pop.gen.NATIVE_PIN_NAME).is_file() else None,
          'P0_sha256':m['P0_sha256'],'model_choices_are_scientific_judgements_not_certificates':True,
          'no_generation_or_cumulative_call_limit':True,'operator_controls':{'stop_file':'STOP_REQUESTED',
          'explicit_paid_consent_each_run':True}})
@@ -170,6 +172,10 @@ def meta_check(mods,experiment):
     if cfg.get('protocol')!=PROTO or cfg.get('experiment')!=str(Path(experiment).resolve()):fail('AUTONOMOUS_MANIFEST_MISMATCH')
     if cfg['persistent_manifest_sha256']!=mods.sha((Path(experiment)/'persistent.json').read_bytes()):fail('PERSISTENT_MANIFEST_CHANGED')
     if cfg['P0_sha256']!=m['P0_sha256']:fail('P0_MISMATCH')
+    if cfg.get('native_source_pin_sha256') is not None:
+        pin=Path(experiment)/pop.gen.NATIVE_PIN_NAME
+        if not pin.is_file() or mods.sha(pin.read_bytes())!=cfg['native_source_pin_sha256']:
+            fail('NATIVE_SOURCE_PIN_MANIFEST_CHANGED')
     j=mods.J(cfg['meta_root']);s=j.verify()
     if any(c['state']!='SAVED' for c in s.model_calls.values()):fail('META_UNSAVED_MODEL_CALL_NO_RETRY')
     return j,s,cfg
@@ -550,7 +556,7 @@ def latest_science_report(mods,experiment):
 def run(args):
     if not args.paid or os.environ.get('FAKG_RESEARCH_ALLOW_PAID')!='YES':fail('EXPLICIT_PAID_APPROVAL_REQUIRED')
     if args.slice_budget<1 or args.bootstrap_peers<1:fail('INVALID_ATOMIC_SLICE_OR_INITIAL_PEER_COUNT')
-    mods=pop.gen.modules();mods.v3.source_code_guard();meta_check(mods,args.experiment)
+    mods=pop.gen.modules();pop.gen.verify_runtime_source(mods,args.experiment);meta_check(mods,args.experiment)
     root=Path(args.experiment).resolve();
     if last_meta_outcome(mods,root):
         out({'status':'ALREADY_GLOBALLY_SCIENTIFIC_TERMINAL_NO_NEW_CALLS'});return
@@ -578,7 +584,7 @@ def run(args):
         finally:fcntl.flock(handle,fcntl.LOCK_UN)
 
 def preflight(args):
-    mods=pop.gen.modules();mods.v3.source_code_guard();meta_check(mods,args.experiment)
+    mods=pop.gen.modules();pop.gen.verify_runtime_source(mods,args.experiment);meta_check(mods,args.experiment)
     pp.preflight(SimpleNamespace(experiment=args.experiment))
     out({'status':'AUTONOMOUS_PREFLIGHT_OK_NO_PAID',
          'no_generation_or_call_quota':True,'scientific_disposition_requires_independent_review':True,
