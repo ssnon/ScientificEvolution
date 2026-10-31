@@ -1,5 +1,11 @@
 # Scientific Evolution — V4 active runtime snapshot
 
+> **Development navigation (2026-10-31):** This README documents the preserved
+> V4 snapshot. For the current general-purpose AI Scientist objective and
+> repository-first development practice, see [PROJECT_VISION.md](PROJECT_VISION.md).
+> For the active integration branch, experiment boundaries, and verified status,
+> see [DEVELOPMENT_STATE.md](DEVELOPMENT_STATE.md).
+
 This folder is a **source-preserving checkpoint**, not a refactored or experimentally validated new AI Scientist. It records the code that implements the V2 Claim–Problem Delta → V3 Closed Loop → V4 Research Readiness path, using `e2core` from the live WSL runtime. The Clean Baseline entrypoint is included without changing its model prompts, source pins, or journal contracts.
 
 ## Scope

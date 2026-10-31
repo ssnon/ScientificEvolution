@@ -9,6 +9,7 @@ from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from .core import EvolutionJournal, State, EvidenceError, guard, canon, sha, proper_id
 from .provider import DurableModel, strict_envelope, content_from_wire
+from .worker_json import parse_worker_response
 from .verified_science import verify_calculation, ScienceInputError
 from .science_sandbox import run_science_python
 from .literature import crossref_lookup
@@ -375,9 +376,12 @@ class Engine:
         call_id='WK_'+wid+'_'+str(stepnum).zfill(5)
         prompt=_worker_input(self.j,wid,'NATIVE_RESEARCH_TOOLS' if self._native_tool_contract else 'CUSTOM_BACKEND_CAPABILITIES_UNDECLARED')
         text=self.model.call(call_id,'WORKER',wid,WORKER_PROMPT,prompt)
-        parsed=strict_envelope(text)
+        # Do not select between distinct scientific outputs. Only identical complete
+        # JSON repeats may collapse; retain the original authored text in Journal.
+        parsed,format_audit=parse_worker_response(text,strict_envelope)
         # Preserve original model authored content in a step even if malformed.
-        self.j.step(wid,'MODEL_RESPONSE',{'call_id':call_id,'text':text,'parse_ok':parsed is not None})
+        self.j.step(wid,'MODEL_RESPONSE',{'call_id':call_id,'text':text,
+            'parse_ok':parsed is not None,'format_audit':format_audit})
         if parsed is None or not isinstance(parsed.get('scientific_text'),str) or parsed.get('next_action') not in {'CONTINUE','RETURN','HOLD'}:
             self.j.finish(wid,'BLOCKED','Model response invalid or truncated; no scientific failure inferred')
             return {'work_id':wid,'status':'BLOCKED_FORMAT'}
