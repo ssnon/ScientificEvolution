@@ -50,6 +50,22 @@ class TestWorkerSerialization(unittest.TestCase):
         obj, _ = parse_worker_response(self.raw+'\n'+self.raw+'\n{}',strict_envelope)
         self.assertIsNone(obj)
 
+    def test_trailing_partial_document_or_garbage_rejected(self):
+        for suffix in ('\n{"scientific_text":"partial"', ' trailing garbage', '\n{} trailing'):
+            with self.subTest(suffix=suffix):
+                obj, meta = parse_worker_response(self.raw + suffix, strict_envelope)
+                self.assertIsNone(obj)
+                self.assertEqual(meta['status'], 'INVALID_FORMAT')
+
+    def test_preamble_duplicate_keys_and_trailing_text_rejected(self):
+        bad = 'Preamble\n{"scientific_text":"a","scientific_text":"b"}'
+        obj, meta = parse_worker_response(bad, strict_envelope)
+        self.assertIsNone(obj)
+        self.assertEqual(meta['status'], 'INVALID_FORMAT')
+        obj, meta = parse_worker_response('Preamble\n' + self.raw + ' trailing', strict_envelope)
+        self.assertIsNone(obj)
+        self.assertEqual(meta['status'], 'INVALID_FORMAT')
+
     def test_legacy_single_preamble_and_controller_unchanged(self):
         body='Preamble\n'+self.raw
         obj,meta=parse_worker_response(body,strict_envelope)
@@ -123,6 +139,15 @@ class TestRealE2WorkerIntegration(unittest.TestCase):
                                            'provider':'openalex','page':1}}}
         raw=json.dumps(base)
         self.run_mock_work(raw+'\n'+raw,'TOOL_FEEDBACK_PENDING')
+
+    def test_trailing_incomplete_never_executes_tool(self):
+        base={'scientific_text':'Synthetic only','next_action':'CONTINUE',
+              'assets':[], 'new_problems':[],
+              'tool_request':{'kind':'literature_research',
+                              'arguments':{'action':'search','query':'fixture only',
+                                           'provider':'openalex','page':1}}}
+        self.run_mock_work(json.dumps(base) + '\n{"scientific_text":"partial"',
+                           'BLOCKED_FORMAT')
 
     def test_distinct_repeat_never_executes_tool(self):
         base={'scientific_text':'Synthetic only','next_action':'CONTINUE',

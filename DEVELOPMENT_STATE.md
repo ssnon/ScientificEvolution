@@ -37,9 +37,30 @@
 ## Current engineering priority
 
 Build one well-understood code path and test it through a whole scientific step.
-First integration: move the already tested G14/M15 identical-worker-JSON guard
-into the tracked `runtime/e2core` code, **without** changing Provider raw calls,
-legacy Controller parsing, prior saved response bytes, or terminated Work.
+First native integration at `56ae65b` (2026-10-31, MOCK_VERIFIED on WSL):
+Worker-only identical-complete-JSON handling in `runtime/e2core`, six controlled
+tests passed. Provider raw-call storage/replay, Controller parsing, historical
+SAVED bytes, and finished Work were not changed. A code review then found that
+the *legacy preamble fallback* could accept a valid first JSON object followed
+by an incomplete second object or trailing garbage, or preamble-wrapped JSON
+with duplicate keys. The follow-up fail-closed correction adds explicit regression coverage;
+this new code must pass WSL tests before the contract is treated as verified.
+
+## Known M15 continuity boundary (not yet native)
+
+M15-1C's `attach_population_routing` activates its archive bridge only for the
+`POPULATION` research/council stage. The current G0 `PEERS` stage deliberately
+receives **no G14 rejected-proposal archive** (it still inherits registered
+G14 assets through the distinct new ROOT). Thus G0 peer research does not, by
+itself, demonstrate actual use of the 19 unregistered opportunities.
+
+The overlay currently monkeypatches `State.apply`, `Engine.worker_step`,
+`controller_plan`, `_worker_input`, and selected adviser/model boundaries.
+Native integration must distinguish Problem ancestry, Asset ancestry,
+Source provenance and *unregistered* opportunity motivation. Controller may
+explicitly hand an opportunity to INFORMED work; FRESH must not receive it,
+and rejected suggestions must not be reclassified as scientific assets or
+source evidence. Preserve archive/source hashes and all original errors.
 
 Next: consolidate typed Problem/Asset/Source relations and unregistered-opportunity
 continuity in the core, then assess research scheduler economics. A Controller

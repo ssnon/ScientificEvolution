@@ -59,13 +59,14 @@ def _complete_documents(text):
     return docs or None
 
 
-def parse_worker_response(text, legacy_single_parser):
-    """Return (object or None, non-scientific audit metadata).
+def parse_worker_response(text, legacy_single_parser=None):
+    """Parse an unambiguous full Worker response, preserving raw provider text.
 
-    The existing single-envelope parser is a compatibility fallback ONLY when
-    no clean multi-document stream was found. Full JSON with duplicate keys or
-    nonstandard constants does not bypass strict validation through fallback.
-    Raw output is NEVER changed by this function.
+    ``legacy_single_parser`` is retained for existing Engine call sites, but
+    deliberately not called: it can accept a complete first JSON document even
+    when a malformed second document or trailing garbage remains. The only
+    legacy tolerance retained here is a *leading* non-JSON preamble before one
+    complete strictly parsed dictionary with whitespace-only trailing content.
     """
     documents = _complete_documents(text)
     if documents is not None:
@@ -82,21 +83,27 @@ def parse_worker_response(text, legacy_single_parser):
                       'document_count': len(documents),
                       'canonical_sha256': None}
 
-    if not isinstance(text, str) or len(text) > MAX_WORKER_CONTENT_CHARS:
-        return None, {'status': 'INVALID_FORMAT', 'document_count': 0}
+    rejected = {'status': 'INVALID_FORMAT', 'document_count': 0}
+    if not isinstance(text, str) or not text or len(text) > MAX_WORKER_CONTENT_CHARS:
+        return None, rejected
 
-    # A fully formed JSON object that strict parsing rejects (e.g. duplicate
-    # keys or NaN) must not be accepted by the older permissive parser.
+    # A preamble is permitted for backward compatibility, but only when the
+    # response contains exactly one COMPLETE JSON object and nothing afterwards.
+    # Inspect the FIRST opening brace, never scan ahead to cherry-pick another.
+    first = text.find('{')
+    if first <= 0 or not text[:first].strip():
+        return None, rejected
+    # Reject a JSON-looking or malformed envelope in the preamble itself.
+    if any(ch in text[:first] for ch in ('}', '[', ']')):
+        return None, rejected
+    decoder = json.JSONDecoder(object_pairs_hook=_unique_pairs,
+                               parse_constant=_reject_constant)
     try:
-        entire_json = json.loads(text)
-    except (ValueError, TypeError):
-        entire_json = None
-    if entire_json is not None:
-        return None, {'status': 'INVALID_JSON_OBJECT_CONTRACT', 'document_count': 0}
-
-    # Preserve legacy single-envelope tolerance for preambles/format wrappers;
-    # do not make this the general rule for multiple complete JSON documents.
-    parsed = legacy_single_parser(text)
-    if isinstance(parsed, dict):
-        return parsed, {'status': 'LEGACY_SINGLE_ENVELOPE', 'document_count': 1}
-    return None, {'status': 'INVALID_FORMAT', 'document_count': 0}
+        obj, end = decoder.raw_decode(text, first)
+    except (ValueError, TypeError, json.JSONDecodeError):
+        return None, rejected
+    if not isinstance(obj, dict) or text[end:].strip():
+        return None, rejected
+    return obj, {'status': 'LEGACY_SINGLE_ENVELOPE',
+                 'document_count': 1,
+                 'canonical_sha256': hashlib.sha256(_canonical(obj)).hexdigest()}
