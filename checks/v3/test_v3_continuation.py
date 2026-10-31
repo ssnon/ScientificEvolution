@@ -32,7 +32,8 @@ class V3ContractTests(unittest.TestCase):
   with tempfile.TemporaryDirectory() as tmp:
    a=Path(tmp)/'before'; b=Path(tmp)/'after';old=self.new_journal(a)
    oldbytes=[sha(canon(x)) for x in old._events()]
-   out=v3.fork(a,b)
+   with patch.object(v3,'source_code_guard'):
+    out=v3.fork(a,b)
    self.assertEqual(out['status'],'V3_FORK_PREPARED_NO_PAID')
    new=EvolutionJournal(b)
    self.assertEqual(oldbytes,[sha(canon(x)) for x in old._events()])
@@ -44,7 +45,17 @@ class V3ContractTests(unittest.TestCase):
  def test_fork_cannot_overwrite_existing(self):
   with tempfile.TemporaryDirectory() as tmp:
    a=Path(tmp)/'before';b=Path(tmp)/'exists';self.new_journal(a);b.mkdir()
-   with self.assertRaises(EvidenceError):v3.fork(a,b)
+   with patch.object(v3,'source_code_guard'):
+    with self.assertRaisesRegex(EvidenceError,'FORK_INVALID_PATH_OR_ALREADY_EXISTS'):
+     v3.fork(a,b)
+ def test_historical_source_guard_remains_enforced(self):
+  # Native development sources must not impersonate pinned V3 sources.
+  with self.assertRaisesRegex(
+      EvidenceError,
+      'UNVERIFIED_EXECUTION_SOURCE_VERSION:e2core/core.py'
+  ):
+   v3.source_code_guard()
+
  def test_unresolved_additional_call_fails_closed(self):
   with tempfile.TemporaryDirectory() as tmp:
    a=Path(tmp)/'before';j=self.new_journal(a)

@@ -2,6 +2,7 @@
 from __future__ import annotations
 import os, json, urllib.request, threading
 from .core import EvolutionJournal, EvidenceError, canon, guard, sha
+from .research_continuity import opportunities_for_journal, concise_index
 
 API_URL='https://openrouter.ai/api/v1/chat/completions'
 MAX_PROVIDER_RESPONSE=4_000_000
@@ -44,6 +45,26 @@ class DurableModel:
         self.model=model;self.max_tokens=max_tokens;self.timeout=timeout;self.mode=mode;self.new_calls=0;self.lock=threading.Lock()
         guard(mode in {'EXTERNAL','MOCK'},'INVALID_MODEL_GATEWAY_MODE')
     def call(self,ident,actor,work_id,system,payload):
+        # Final provider boundary covers Memory/Frontier controllers that do
+        # not call Engine._external_context. For an existing saved request,
+        # reattach only its EXACT original index; never recompute historical
+        # context from a changing source archive. Durable wire hashing remains
+        # authoritative and still rejects any OTHER request change.
+        if (actor=='CONTROLLER' and work_id is None
+                and ident.startswith(('CTRL_', 'OPP_'))
+                and isinstance(payload,dict)):
+            prior=self.j.verify().model_calls.get(ident)
+            if prior:
+                old_wire=json.loads(self.j.raw(prior['request_blob']))
+                old_payload=json.loads(old_wire['messages'][1]['content'])
+                if ('unregistered_opportunity_index' in old_payload
+                        and 'unregistered_opportunity_index' not in payload):
+                    payload={**payload,'unregistered_opportunity_index':
+                             old_payload['unregistered_opportunity_index']}
+            else:
+                idx=opportunities_for_journal(self.j)
+                if idx and 'unregistered_opportunity_index' not in payload:
+                    payload={**payload,'unregistered_opportunity_index':concise_index(idx)}
         wire=canon({'model':self.model,'temperature':0.7,'max_tokens':self.max_tokens,
             'response_format':{'type':'json_object'},'messages':[{'role':'system','content':system},
               {'role':'user','content':json.dumps(payload,ensure_ascii=False,sort_keys=True,allow_nan=False)}]})

@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib, json, os, pathlib, re, tempfile, threading
 from dataclasses import dataclass, field
 from typing import Any
+from .research_continuity import check_typed_problem, check_work_handoff, validate_record, ContinuityError
 
 PROTOCOL='E2_AUTONOMOUS_EVOLUTION_V1'
 IDENT=re.compile(r'^[A-Za-z][A-Za-z0-9_\-]{0,100}$')
@@ -53,6 +54,7 @@ class State:
     e3r1_policy:bool=False
     objective_assessments:list=field(default_factory=list)
     integration_requests:list=field(default_factory=list)
+    carried_opportunities:dict=field(default_factory=dict)
     runtime_contract_version:str|None=None
     def apply(self,kind,p):
         guard(isinstance(p,dict),'PAYLOAD_OBJECT_REQUIRED')
@@ -85,11 +87,27 @@ class State:
             if p['research_status']=='COMPLETED':
                 guard(p['objective_status']!='UNRESOLVED' and p['objective_coverage']=='ORIGINAL_PROBLEM' and bool(p['supporting_asset_ids']),'COMPLETED_WITHOUT_P0_LEVEL_EVIDENCE')
             self.objective_assessments.append(p)
+        elif kind=='OPPORTUNITY_CARRIED':
+            # Carried rejected proposals remain unregistered science, not a
+            # source, evidence, accepted Asset, or new independent discovery.
+            entry=p.get('opportunity')
+            try:validate_record(entry)
+            except ContinuityError as exc:raise EvidenceError(str(exc)) from None
+            ident=entry['opportunity_id']
+            guard(proper_id(ident) and ident not in self.carried_opportunities,
+                  'BAD_OR_DUPLICATE_CARRIED_OPPORTUNITY')
+            guard(isinstance(p.get('upstream_root'),str) and p['upstream_root']
+                  and isinstance(p.get('upstream_head_sha256'),str)
+                  and HASH.fullmatch(p['upstream_head_sha256']),
+                  'CARRIED_OPPORTUNITY_PROVENANCE_REQUIRED')
+            self.carried_opportunities[ident]=entry
         elif kind=='SOURCE_REGISTERED':
             i=p.get('id')
             guard(proper_id(i) and i not in self.sources and p.get('kind') in SOURCE_TYPES and HASH.fullmatch(p.get('blob','')),'BAD_SOURCE')
             self.sources[i]=p
         elif kind=='PROBLEM_CREATED':
+            try:check_typed_problem(p,self)
+            except ContinuityError as exc:raise EvidenceError(str(exc)) from None
             i=p.get('id');parents=p.get('parents');reason=p.get('decomposition_rationale')
             guard(proper_id(i) and i not in self.problems and isinstance(parents,list) and len(parents)>0 and all(x in self.problems for x in parents),'INVALID_PROBLEM_PARENTS')
             guard(bool(reason and str(reason).strip()) and p.get('contribution_to_parent') and p.get('scope') and p.get('question'),'DECOMPOSITION_EXPLANATION_REQUIRED')
@@ -120,6 +138,8 @@ class State:
             guard(all(x in self.sources for x in w.get('source_ids',[])),'UNKNOWN_WORK_SOURCES')
             guard(all(self.sources[x]['kind']=='PRIMARY' for x in w.get('source_ids',[]) if mode=='FRESH'),'FRESH_SOURCE_CONTAMINATION')
             guard(bool(w.get('question')) and bool(w.get('research_rationale')),'WORK_QUESTION_AND_RATIONALE_REQUIRED')
+            try:check_work_handoff(w)
+            except ContinuityError as exc:raise EvidenceError(str(exc)) from None
             self.evolution.append({**p,'work_id':wid})
             self.work[wid]={**w,'operation':op,'asset_input_ids':parents,'evolution_id':i,'status':'QUEUED','steps':[], 'published':[], 'processed_steps':[]}
         elif kind=='WORK_PORTFOLIO_ASSESSED':

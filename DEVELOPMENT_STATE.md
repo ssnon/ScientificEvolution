@@ -78,3 +78,14 @@ claim/decision to count as scientific progress.
 Change this document with significant architecture/scientific milestone commits.
 Never copy secret provider inputs, private journals, token strings, or billing
 information into this public repository.
+
+## Native continuity integration (MOCK_VERIFIED, 2026-10-31)
+
+The tracked core, engine, provider, Population Council and generation carry
+now implement explicit typed Problem ancestry vs Asset motivation; read-only
+rejected-proposal indexing; POPULATION-only inherited archive visibility;
+explicit INFORMED Work handoff pinned in journal; generation carry of unregistered
+proposals separate from scientific assets or evidence. The WSL no-paid regression suite passed 49/49 tests (Continuity 19, V3 9, V4 13, Clean 8). Historical V3/V4 source guards remain enforced in production; synthetic fork tests isolate their journal semantics. Population-level live scientific continuity remains UNVERIFIED. Existing
+G14/M15 live roots are frozen and are NOT authorized to resume under the
+new source contract. External archives require explicit hash-pinned opt-in on
+a NEW experiment root. No Level II scientific claim is certified by this.

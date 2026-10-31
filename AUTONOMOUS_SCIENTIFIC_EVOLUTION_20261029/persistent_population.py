@@ -13,6 +13,7 @@ from types import SimpleNamespace
 
 import population_run as pop
 import population_resume as compat
+from e2core.research_continuity import opportunities_for_journal
 
 PROTOCOL='SCIENTIFIC_PERSISTENT_POPULATION_V1'
 TERMINAL={'HOLD_WITH_RATIONALE','SCOPED_NEGATIVE','REVIEW_WORTHY_CANDIDATE'}
@@ -167,6 +168,16 @@ def prepare_clean_portfolio(mods,source_root,dest):
             'Prior ROOT statuses and decisions, not primary experimental data')
         # Actual direct evidence remains a referenced original TOOL_RESULT,
         # with its original request and execution checked before exposure.
+        # Carry rejected proposals separately from accepted Assets and
+        # registered primary/source evidence. Peers retain blind independence:
+        # native context only exposes this ledger at POPULATION stage.
+        prior_unregistered=opportunities_for_journal(source)
+        for opportunity_id in sorted(prior_unregistered):
+            j.append('OPPORTUNITY_CARRIED',{
+                'opportunity':prior_unregistered[opportunity_id],
+                'upstream_root':str(source.root),
+                'upstream_head_sha256':before['head_sha256'],
+                'not_registered_science':True})
         carried_sources=carry_registered_external_evidence(mods,j,source,ss)
         imported_sources=pop.record_direct_tool_sources(mods,j,source,ss,'PRIOR_GENERATION')
         if len(j.verify().assets)!=len(ss.assets):fail('CARRY_LOST_SCIENCE_ASSETS')
@@ -183,6 +194,7 @@ def prepare_clean_portfolio(mods,source_root,dest):
             'edges':transfers,'inherited_direct_tool_sources':imported_sources,
             'previously_registered_external_sources_carried':carried_sources,
             'unfinished_work_statuses_preserved_as_history':True,
+            'unregistered_opportunities_preserved_not_scientific_assets':len(prior_unregistered),
             'new_research_executed':False,'scientific_certification':False}
         newwrite(stage/'carry_receipt.json',result)
         j.verify()

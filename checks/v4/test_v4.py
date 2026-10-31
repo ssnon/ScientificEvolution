@@ -30,7 +30,8 @@ class V4Tests(unittest.TestCase):
   with tempfile.TemporaryDirectory() as d:
    src=Path(d)/'src';dst=Path(d)/'out';j=self.newroot(src)
    before=[sha(canon(e)) for e in j._events()]
-   result=v4.fork(src,dst)
+   with patch.object(v3, 'source_code_guard'):
+    result=v4.fork(src,dst)
    self.assertEqual(result['status'],'V4_ROOT_PREPARED_NO_PAID')
    self.assertEqual(before,[sha(canon(e)) for e in j._events()])
    n=EvolutionJournal(dst)
@@ -42,13 +43,17 @@ class V4Tests(unittest.TestCase):
  def test_existing_root_not_overwritten(self):
   with tempfile.TemporaryDirectory() as d:
    src=Path(d)/'src';dst=Path(d)/'out';self.newroot(src);dst.mkdir()
-   with self.assertRaises(EvidenceError):v4.fork(src,dst)
+   with patch.object(v3, 'source_code_guard'):
+    with self.assertRaisesRegex(EvidenceError, 'INVALID_OR_EXISTING_FORK_TARGET'):
+     v4.fork(src,dst)
  def test_unknown_additional_call_fails_closed(self):
   with tempfile.TemporaryDirectory() as d:
    j=self.newroot(Path(d)/'src')
    j.append('MODEL_CALL_INTENT',{'id':'NVT_UNK','actor':'CONTROLLER','work_id':None,
      'request_blob':j.blob({'hello':True}),'model':'openai/gpt-5.6-luna','billing_mode':'EXTERNAL'})
-   with self.assertRaises(EvidenceError):v4.fork(j.root,Path(d)/'other')
+   with patch.object(v3, 'source_code_guard'):
+    with self.assertRaisesRegex(EvidenceError, 'ADDITIONAL_UNCERTAIN_CALLS_REQUIRE_MANUAL_REVIEW'):
+     v4.fork(j.root,Path(d)/'other')
  def test_readiness_distinguishes_start_and_certification(self):
   r=v4.READINESS_TEMPLATE
   self.assertIn('Not necessarily raw experimental trajectories',r['theoretical_readiness']['data_required_to_begin'])

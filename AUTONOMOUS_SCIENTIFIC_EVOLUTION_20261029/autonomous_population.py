@@ -17,6 +17,7 @@ from types import SimpleNamespace
 import persistent_population as pp
 import population_run as pop
 import population_resume as compat
+from e2core.research_continuity import opportunities_for_journal, concise_index
 
 PROTO='AUTONOMOUS_POPULATION_DISPOSITION_V1'
 PEER_CHOICES={'CONTINUE_RESEARCH','YIELD_TO_POPULATION','ADD_INDEPENDENT_PEER'}
@@ -377,9 +378,20 @@ def add_peer(mods,experiment,cycle):
 
 def council(mods,experiment,cycle,phase,args,peer=None):
     ctx=snapshot(mods,experiment,cycle,phase,peer)
+    if phase=='POPULATION':
+        # The independent G0 PEER council never receives external inherited
+        # rejected proposals. Model may choose or ignore them after pooling.
+        idx=opportunities_for_journal(mods.J(cycle['population_root']))
+        if idx:
+            ctx['unregistered_opportunity_index']=concise_index(idx)
     local_root_terminal=ctx['current_research'].get('status') in pp.TERMINAL
     options=council_choices(phase,local_root_terminal)
     prompt=S_PROMPT+'\nCurrent decision stage: '+phase
+    if ctx.get('unregistered_opportunity_index'):
+        prompt+=('\nThe optional unregistered_opportunity_index contains previously '
+                 'rejected model proposals, NOT scientific results or primary '
+                 'sources. Decide freely whether any merits INFORMED follow-up '
+                 'after independent peers have been pooled; no forced retry.')
     if local_root_terminal:
         ctx['runtime_feasibility']={
             'research_root_locally_terminal':True,

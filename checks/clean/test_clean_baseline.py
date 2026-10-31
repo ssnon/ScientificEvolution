@@ -47,6 +47,7 @@ def root_with_staged_call(path):
 
 
 class CleanBaselineTests(unittest.TestCase):
+    @patch.object(clean, 'source_code_guard', new=lambda: None)
     def test_audit_reports_excluded_saved_call_without_mutation(self):
         with tempfile.TemporaryDirectory() as t:
             j=root_with_staged_call(Path(t)/'source')
@@ -56,6 +57,7 @@ class CleanBaselineTests(unittest.TestCase):
             self.assertEqual(a['excluded_saved_call_count'],1)
             self.assertEqual(before,[sha(canon(x)) for x in j._events()])
 
+    @patch.object(clean, 'source_code_guard', new=lambda: None)
     def test_fork_requires_explicit_ack_when_excluding_saved_external_call(self):
         with tempfile.TemporaryDirectory() as t:
             j=root_with_staged_call(Path(t)/'source')
@@ -63,6 +65,7 @@ class CleanBaselineTests(unittest.TestCase):
                 clean.fork(j.root,Path(t)/'new')
             self.assertFalse((Path(t)/'new').exists())
 
+    @patch.object(clean, 'source_code_guard', new=lambda: None)
     def test_fork_creates_verifiable_d77_historical_branch(self):
         with tempfile.TemporaryDirectory() as t:
             j=root_with_staged_call(Path(t)/'source')
@@ -79,6 +82,7 @@ class CleanBaselineTests(unittest.TestCase):
             self.assertEqual(clean.inspect(Path(t)/'new')['excluded_tail_saved_calls'],1)
             self.assertEqual([sha(canon(x)) for x in new._events()[:-1]],source_before[:10])
 
+    @patch.object(clean, 'source_code_guard', new=lambda: None)
     def test_scientific_tail_requires_separate_acknowledgement(self):
         with tempfile.TemporaryDirectory() as t:
             j=root_with_staged_call(Path(t)/'source')
@@ -92,6 +96,7 @@ class CleanBaselineTests(unittest.TestCase):
             self.assertEqual(a['excluded_scientific_events'][0]['kind'],'EVOLUTION_APPLIED')
             self.assertFalse((Path(t)/'new').exists())
 
+    @patch.object(clean, 'source_code_guard', new=lambda: None)
     def test_does_not_silently_skip_new_uncertain_tail(self):
         with tempfile.TemporaryDirectory() as t:
             j=root_with_staged_call(Path(t)/'source')
@@ -100,6 +105,7 @@ class CleanBaselineTests(unittest.TestCase):
             j.append('MODEL_CALL_UNCERTAIN',{'id':'OPP_UNK','reason':'ProviderError'})
             with self.assertRaises(EvidenceError):clean.branch_analysis(j.root)
 
+    @patch.object(clean, 'source_code_guard', new=lambda: None)
     def test_rejects_wrong_checkpoint_no_mutation(self):
         with tempfile.TemporaryDirectory() as t:
             j=root_with_staged_call(Path(t)/'source')
