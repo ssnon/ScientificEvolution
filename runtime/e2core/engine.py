@@ -50,6 +50,11 @@ more assets, but must still create a legitimate work with unique IDs. Do not
 pad parent lists or relabel science merely to pass validation. If the intended
 FUSE has only one genuine source hypothesis, reconsider a one-parent operation
 or a pause rather than fabricating a second asset.
+Cross-generation Work execution boundary (mandatory, independent of scientific value):
+- portfolio_decisions.work_ids can refer ONLY to Work already created in the CURRENT Journal, listed in portfolio_context.open_work_items. Historical AI or previous-generation Work IDs are NEVER eligible.
+- A historical Work reported ACTIVE, QUEUED, or DEFERRED describes its status in its ORIGINAL Journal when inherited. It is not active, queued, or executable in this current Journal. Do NOT use KEEP, DEFER, CANCEL, or REACTIVATE on its historical ID.
+- You are free to judge a historical problem valuable, superseded, or irrelevant. If scientific continuation is worthwhile, create a NEW explicit actions[] item with a new unique work.id, valid parent ASSET IDs from the CURRENT Journal, a scientifically appropriate operation, and an independently selected scientific question. Mention the old Work ID in rationale if useful. Nothing is resumed, accepted, or invented automatically.
+- If no current Work exists, portfolio_decisions MUST be []; disposition ONGOING then requires a valid new runnable Work action. Alternatively choose a scientifically justified scoped pause; do not create dummy research merely to satisfy execution.
 '''
 
 WORKER_PROMPT='''You are an autonomous scientific researcher serving a broader ORIGINAL scientific question. Your assigned subproblem is NOT automatically the whole problem. A related prior asset is unverified research, not an answer to copy. When developing/challenging/fusing it, articulate the actual change relative to every parent and the tests, evidence or mathematical work that support or challenge that change. Your scientific contribution may be a new physically plausible mechanism, precise conditional hypothesis, verified derivation, discriminating prediction, numerical counterexample, tested null, grounded literature claim, scoped negative result, or an informative pivot. Do not insist on empirical verification for a review-worthy *proposal*, but label hypothetical assumptions and novelty uncertainty. Do not mistake low identifiability of existing channels for impossibility of proposing fresh hypotheses. When an approach stalls, decide autonomously whether to redirect, propose a different subproblem, or return a scoped result; do not artificially prolong work. Scientific evidence acquisition is itself substantive research when it may change a model, prediction or decision. Your input includes a factual research_capability_state: use it to see which research tools are available and which retrieval attempts you actually made. If unavailable experimental or primary-source information materially blocks your assigned question, consider using tools to seek it before claiming it cannot be obtained. A useful workflow can be literature_research search -> resolve/read_fulltext -> inspect located passages -> develop or challenge a hypothesis with explicit source_ids and a scientific delta. You may instead choose theory, calculation, a different approach or RETURN if the search has low expected value; no minimum search/tool quota exists. Do not describe a search that was not executed, and distinguish literature access failures from evidence that does not exist. Never invent measurements, quotations, citations or tool executions. Bibliographic metadata is NOT primary experimental evidence; inspect source metadata and provenance. A Python computation labelled EXECUTED is not automatically scientifically correct.
@@ -197,7 +202,9 @@ def controller_plan(j:EvolutionJournal, raw_obj:dict, call_id:str,decision_id:st
             aids=group.get('evidence_asset_ids',[])
             guard(isinstance(aids,list) and all(a in s.assets for a in aids),'E3R1_BAD_PORTFOLIO_SOURCES')
             for wid in group['work_ids']:
-                guard(isinstance(wid,str) and wid not in seen and wid in s.work,'E3R1_DUPLICATE_OR_UNKNOWN_WORK')
+                guard(isinstance(wid,str),'E3R1_PORTFOLIO_WORK_ID_NOT_TEXT')
+                guard(wid in s.work,'E3R1_NONLOCAL_WORK_NOT_EXECUTABLE:'+wid[:90])
+                guard(wid not in seen,'E3R1_DUPLICATE_OR_UNKNOWN_WORK')
                 seen.add(wid)
                 planned.append(('WORK_PORTFOLIO_ASSESSED',{'id':wid,'reviewer_id':decision_id,
                     'action':action,'assessment':assessment_label,'rationale':group['rationale'],
@@ -323,7 +330,8 @@ def _external_context(j, tool_capabilities=None):
         context['previous_rejected_controller_attempt']={
             'call_id':cid,'validation_error':reason,
             'original_model_response':original_text,
-            'instruction':'Reconsider and issue a complete valid plan. Do not invent unknown parent problems or alter science merely to satisfy a schema. All known problem IDs are in problems; declared new problems may depend on each other.'}
+            'current_journal_work_ids':sorted(s.work),
+            'instruction':'Reconsider and issue a complete valid plan. Do not invent unknown parent problems or alter science merely to satisfy a schema. Only current_journal_work_ids may appear in portfolio_decisions.work_ids; previous-generation Work IDs are historical, not executable. To continue one, autonomously propose a NEW valid Work in actions with a new unique work.id. All known problem IDs are in problems; declared new problems may depend on each other.'}
         break
     opportunity_index=opportunities_for_journal(j)
     if opportunity_index:

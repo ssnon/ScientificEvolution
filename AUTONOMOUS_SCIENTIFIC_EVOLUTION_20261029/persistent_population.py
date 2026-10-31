@@ -301,13 +301,32 @@ def previous_population_bridge(mods):
         rec=j.verify().sources.get('SRC_PREVIOUS_POPULATION_STATUS')
         if rec:
             old=json.loads(j.raw(rec['blob']))
+            current_work=j.verify().work
+            current_ids=sorted(current_work)
+            historical_ids=sorted(old['work_statuses'])
             ctx['previous_generation_scientific_portfolio']={
                 'source_root':old['source_root'],
                 'head':old['source_head'],
                 'work_statuses':old['work_statuses'],
                 'previous_review':old['previous_review'],
                 'recent_controller_decisions':old['recent_controller_decisions'],
-                'historical_status_only_not_new_execution':True}
+                'historical_status_only_not_new_execution':True,
+                'historical_work_ids':historical_ids,
+                'historical_status_is_original_root_snapshot':True,
+                'historical_active_does_not_mean_current_active':True,
+                'historical_work_not_auto_resumed':True}
+            ctx['current_journal_work_execution_scope']={
+                'current_root':str(j.root),
+                'current_root_work_ids':current_ids,
+                'eligible_portfolio_decisions_work_ids':current_ids,
+                'currently_runnable_work_ids':sorted(
+                    wid for wid,w in current_work.items() if w['status'] in ('QUEUED','ACTIVE')),
+                'historical_work_ids_not_executable_here':historical_ids,
+                'no_automatic_cross_generation_work_resumption':True,
+                'model_must_authorize_new_work_if_historical_science_warrants_continuation':True,
+                'instruction':('Historical ACTIVE/QUEUED/DEFERRED are past statuses. '                             'portfolio_decisions may name only current-root Work. '
+                             'For a valuable historical frontier, independently choose a NEW '
+                             'actions work with a unique work.id, or justify no continuation.')}
         return ctx
     mods.v3._external_context=bridge
     try:yield
