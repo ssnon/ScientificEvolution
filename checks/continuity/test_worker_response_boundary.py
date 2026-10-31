@@ -101,7 +101,7 @@ class MockTool:
 
 
 class TestRealE2WorkerIntegration(unittest.TestCase):
-    def run_mock_work(self,rendered,expected_status):
+    def run_mock_work(self,rendered,expected_status,expected_format_status=None):
         from e2core.core import EvolutionJournal
         from e2core.engine import Engine
         with tempfile.TemporaryDirectory(prefix='scientific_core_worker_') as folder:
@@ -120,9 +120,16 @@ class TestRealE2WorkerIntegration(unittest.TestCase):
             self.assertEqual(s.model_calls['WK_W_TEST_00001']['billing_mode'],'MOCK')
             saved=json.loads(j.raw(s.work['W_TEST']['steps'][0]['raw_blob']))
             self.assertEqual(saved['text'],rendered)
-            self.assertEqual(saved['format_audit']['status'],
-                'IDENTICAL_DUPLICATE_COLLAPSED' if expected_status=='TOOL_FEEDBACK_PENDING'
-                else 'DISTINCT_MULTIPLE_JSON_REJECTED')
+            if expected_format_status is None:
+                expected_format_status = (
+                    'IDENTICAL_DUPLICATE_COLLAPSED'
+                    if expected_status == 'TOOL_FEEDBACK_PENDING'
+                    else 'DISTINCT_MULTIPLE_JSON_REJECTED'
+                )
+            self.assertEqual(
+                saved['format_audit']['status'],
+                expected_format_status
+            )
             if expected_status=='TOOL_FEEDBACK_PENDING':
                 self.assertEqual(len(tool.requests),1)
                 self.assertTrue(any(x['kind']=='TOOL_RECORDED' for x in j._events()))
@@ -147,7 +154,7 @@ class TestRealE2WorkerIntegration(unittest.TestCase):
                               'arguments':{'action':'search','query':'fixture only',
                                            'provider':'openalex','page':1}}}
         self.run_mock_work(json.dumps(base) + '\n{"scientific_text":"partial"',
-                           'BLOCKED_FORMAT')
+                           'BLOCKED_FORMAT', expected_format_status='INVALID_FORMAT')
 
     def test_distinct_repeat_never_executes_tool(self):
         base={'scientific_text':'Synthetic only','next_action':'CONTINUE',

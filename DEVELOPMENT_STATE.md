@@ -44,7 +44,7 @@ SAVED bytes, and finished Work were not changed. A code review then found that
 the *legacy preamble fallback* could accept a valid first JSON object followed
 by an incomplete second object or trailing garbage, or preamble-wrapped JSON
 with duplicate keys. The follow-up fail-closed correction adds explicit regression coverage;
-this new code must pass WSL tests before the contract is treated as verified.
+The fail-closed Worker response boundary passed 9/9 controlled WSL tests after correcting a test-only audit-status expectation. Incomplete trailing JSON is classified INVALID_FORMAT and rejected; distinct complete JSON objects are classified DISTINCT_MULTIPLE_JSON_REJECTED.
 
 ## Known M15 continuity boundary (not yet native)
 
