@@ -199,9 +199,164 @@ def _ordered_new_problems(existing_ids, proposed):
     return ordered
 
 
+# M23_ROOT_SCOPED_REFERENCE_CONTRACT_V1
+# Namespace translation is structural, not a scientific evaluation.  A model's
+# original provider response remains saved; any applied deterministic translation
+# is exposed in PROGRAM_REVIEWED.m23_verified_reference_translation.
+def _m23_peer_namespace(j, s):
+    """Use only saved, current-Journal peer import receipts with extant targets.
+
+    Aliases that collide across independently authored peers are ambiguous and
+    MUST NOT be auto-resolved. An actual current-root Asset always wins.
+    """
+    from collections import defaultdict
+    choices=defaultdict(list)
+    for sid, src in s.sources.items():
+        if not sid.startswith('SRC_PEER_DECISION_') or src.get('kind')!='HISTORICAL_AI':
+            continue
+        report=json.loads(j.raw(src['blob']))
+        mapping=report.get('asset_id_translation',{})
+        if not isinstance(mapping,dict):
+            raise EvidenceError('M23_INVALID_PEER_TRANSLATION_RECEIPT')
+        peer=report.get('peer_syn')
+        for old,new in mapping.items():
+            if not isinstance(old,str) or not isinstance(new,str):
+                raise EvidenceError('M23_INVALID_PEER_TRANSLATION_ENTRY')
+            if new in s.assets and s.assets[new].get('peer_syn')==peer:
+                choices[old].append((new,sid))
+    # A new generation reindexes predecessor assets as A_CARRY_.  A carried
+    # asset's dedicated HISTORICAL_AI receipt can additionally pin the original
+    # peer-author ID; verify both the donor asset identity and receipt linkage.
+    for current_id,asset in s.assets.items():
+        predecessor=asset.get('carried_original_asset_id')
+        if not isinstance(predecessor,str):
+            continue
+        for sid in asset.get('source_ids',[]):
+            source=s.sources.get(sid,{})
+            if not sid.startswith('SRC_CARRY_ASSET_') or source.get('kind')!='HISTORICAL_AI':
+                continue
+            record=json.loads(j.raw(source['blob']))
+            upstream=record.get('original_asset',{})
+            if (record.get('upstream_asset_id')!=predecessor or
+                    not isinstance(upstream,dict) or upstream.get('id')!=predecessor):
+                raise EvidenceError('M23_CARRY_ASSET_RECEIPT_INCONSISTENT')
+            choices[predecessor].append((current_id,sid))
+            if upstream.get('peer_syn') and predecessor.startswith('A_PEER_'):
+                ref=upstream.get('source_ref')
+                if isinstance(ref,str) and '#' in ref:
+                    source_name=ref.rsplit('#',1)[1]
+                    if source_name and source_name!=predecessor:
+                        choices[source_name].append((current_id,sid))
+    aliases={};ambiguous=[]
+    for old, values in choices.items():
+        unique=set(x[0] for x in values)
+        if old in s.assets:  # Namespace is already canonical here.
+            continue
+        if len(unique)!=1:
+            ambiguous.append(old)
+            continue
+        canonical=next(iter(unique))
+        sources=sorted(set(sid for item,sid in values if item==canonical))
+        aliases[old]={'canonical_id':canonical, 'receipt_source_id':sources[0],
+                       'supporting_receipt_source_ids':sources}
+    return aliases,sorted(ambiguous)
+
+
+def _m23_namespace_context(j,s):
+    aliases,ambiguous=_m23_peer_namespace(j,s)
+    return {'scope':'CURRENT_ROOT_ONLY',
+        'canonical_asset_ids':sorted(s.assets),
+        'verified_original_to_canonical':aliases,
+        'ambiguous_original_ids_must_not_be_used':ambiguous,
+        'instructions':('Use ONLY current-root canonical Asset IDs for reviews, '
+          'portfolio_decisions.evidence_asset_ids, actions.asset_ids, and '
+          'objective_assessment.supporting_asset_ids. Original peer IDs refer '
+          'to historical author names; verified unique aliases may be '
+          'translated with an explicit journal receipt, never by guessing. '
+          'The original model response is never modified; no scientific '
+          'claim is certified by this translation.')}
+
+
+def _m23_resolve_controller_references(j,s,raw):
+    """Resolve ONLY uniquely proved IDs, with a per-field audit receipt.
+
+    The return object is a copy; never mutate the raw model-authored proposal.
+    Any unmapped reference is left untouched for the existing fail-closed guard.
+    """
+    aliases,ambiguous=_m23_peer_namespace(j,s)
+    obj=copy.deepcopy(raw)
+    receipts=[]
+    def one(value,path):
+        if not isinstance(value,str) or value in s.assets:
+            return value
+        if value in ambiguous:
+            raise EvidenceError('M23_AMBIGUOUS_CROSS_ROOT_ASSET_REFERENCE')
+        rec=aliases.get(value)
+        if rec is None:
+            return value
+        receipts.append({'path':path,'original_id':value,
+            'canonical_id':rec['canonical_id'],
+            'verified_receipt_source_id':rec['receipt_source_id'],
+            'not_scientific_certification':True})
+        return rec['canonical_id']
+    def seq(parent,key,path):
+        if not isinstance(parent,dict) or not isinstance(parent.get(key),list):
+            return
+        parent[key]=[one(x,path+'['+str(i)+']') for i,x in enumerate(parent[key])]
+    for i,review in enumerate(obj.get('reviews',[])):
+        if isinstance(review,dict) and 'id' in review:
+            review['id']=one(review['id'],f'reviews[{i}].id')
+    for i,act in enumerate(obj.get('actions',[])):
+        seq(act,'asset_ids',f'actions[{i}].asset_ids')
+        if isinstance(act,dict):
+            seq(act.get('work'),'asset_input_ids',f'actions[{i}].work.asset_input_ids')
+    for i,group in enumerate(obj.get('portfolio_decisions',[])):
+        seq(group,'evidence_asset_ids',f'portfolio_decisions[{i}].evidence_asset_ids')
+    seq(obj.get('objective_assessment'),'supporting_asset_ids',
+        'objective_assessment.supporting_asset_ids')
+    return obj,receipts
+
+
+def _m23_worker_publication_source_contract(s,w):
+    """Deterministic view of exactly the existing ASSET_PUBLISHED source guard.
+
+    Reading a historical source is not authorization to cite it in a published
+    asset; an INFORMED researcher must first obtain a permissible local source
+    or use the pinned parent's registered source when already authorized.
+    """
+    allowed=set(w.get('source_ids',[]))
+    if w['mode']=='INFORMED':
+        for parent_id in w.get('asset_input_ids',[]):
+            allowed.update(s.assets[parent_id].get('source_ids',[]))
+    if s.r5_policy:
+        allowed.update(sid for sid,source in s.sources.items()
+            if source['kind']=='TOOL_RESULT' and source.get('work_id')==w['id'])
+        allowed.update(sid for sid,source in s.sources.items()
+            if source['kind']=='PRIMARY')
+    if w['mode']=='FRESH':
+        allowed={sid for sid in allowed if sid in s.sources and
+                 (s.sources[sid]['kind']=='PRIMARY' or
+                  (s.r5_policy and s.sources[sid]['kind']=='TOOL_RESULT' and
+                   s.sources[sid].get('work_id')==w['id']))}
+    else:
+        allowed={sid for sid in allowed if sid in s.sources}
+    return {'scope':'CURRENT_WORK_ASSET_PUBLICATION',
+        'work_id':w['id'], 'mode':w['mode'],
+        'citable_source_ids':sorted(allowed),
+        'instructions':('Use only the exact IDs above in assets[].source_ids. '
+          'Never synthesize Source IDs from Asset IDs, carried IDs, search '
+          'metadata, or upstream filenames. source_lookup visibility is NOT '
+          'permission to cite a source in ASSET_PUBLISHED. Existing unauthorized '
+          'and unknown citations remain rejected, not auto-repaired. '
+          'To cite a new executable tool output, wait until it is recorded and '
+          'a registered permitted Source ID is available. Use an empty source '
+          'list rather than inventing an ID, and state evidence limitations. '
+          'FRESH cannot inherit historical AI context.')}
+
 def controller_plan(j:EvolutionJournal, raw_obj:dict, call_id:str,decision_id:str):
     """Validate a model-authored proposal in memory, without partial commits."""
     s=j.verify();guard(isinstance(raw_obj,dict),'CONTROLLER_NOT_OBJECT')
+    raw_obj,m23_translations=_m23_resolve_controller_references(j,s,raw_obj)
     guard(bool(raw_obj.get('rationale')) and isinstance(raw_obj.get('actions'),list) and isinstance(raw_obj.get('new_problems',[]),list) and isinstance(raw_obj.get('reviews',[]),list),'CONTROLLER_CONTRACT_INVALID')
     guard(raw_obj.get('disposition') in {'ONGOING','UNRESOLVED','HOLD_WITH_RATIONALE','REVIEW_WORTHY_CANDIDATE','SCOPED_NEGATIVE'},'CONTROLLER_INVALID_DISPOSITION')
     assessment=None
@@ -296,6 +451,8 @@ def controller_plan(j:EvolutionJournal, raw_obj:dict, call_id:str,decision_id:st
     review={'reviewer_id':decision_id,'scientific_status':raw_obj['disposition'],'rationale':raw_obj['rationale'],
         'considered_asset_ids':[p['id'] for p in raw_obj.get('reviews',[])],
         'unresolved_opportunities':raw_obj.get('unresolved_opportunities',[])}
+    if m23_translations:
+        review['m23_verified_reference_translation']=m23_translations
     planned.append(('PROGRAM_REVIEWED',review))
     if assessment is not None:planned.append(('PROGRAM_OBJECTIVE_ASSESSED',assessment))
     final_state=_simulated(s,planned)
@@ -417,6 +574,7 @@ def _external_context(j, tool_capabilities=None):
     opportunity_index=opportunities_for_journal(j)
     if opportunity_index:
         context['unregistered_opportunity_index']=concise_index(opportunity_index)
+    context['m23_root_scoped_asset_namespace']=_m23_namespace_context(j,s)
     return context
 
 def _worker_input(j,wid,tool_capabilities=None):
@@ -445,6 +603,7 @@ def _worker_input(j,wid,tool_capabilities=None):
         'research_action':'Make next scientific judgement. If missing primary evidence would materially change the research, consider actual available literature/data tools. Search is a scientific option, never a quota; record a causal scientific delta from any retrieved text.'}
     if w['mode']=='INFORMED' and w.get('opportunity_input_ids'):
         result['explicit_unregistered_opportunity_handoff']=worker_handoff(w)
+    result['m23_asset_publication_source_contract']=_m23_worker_publication_source_contract(s,w)
     return result
 
 class Engine:
