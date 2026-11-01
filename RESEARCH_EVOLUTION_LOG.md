@@ -60,3 +60,28 @@ Record separately: `IMPLEMENTED` (code exists); `MOCK_VERIFIED` (controlled fixt
 - **Disposition:** Council YIELD_TO_POPULATION remains authoritative;
   source access failure and format rejection are not scientific
   falsification. SYN_01 remains the active independent research peer.
+
+## 2026-11-01 — M17 actual Population combine
+
+- **Execution:** Both peer Councils yielded. Native no-paid
+  PEERS -> COMBINE -> POPULATION completed.
+- **Provenance:** SYN_01 contributed four committed Controller
+  decisions and zero new assets. SYN_02 contributed one decision
+  and A_charge_height_gating_001, mapped to
+  A_PEER_a981edadb2d01440bd7ce2.
+- **Population:** 445 assets, zero model calls, zero executable
+  current-root Works, two integration requests recorded.
+- **Research limitations:** SYN_01 experienced three
+  DISTINCT_MULTIPLE_JSON_REJECTED Worker outcomes. Its final
+  ACTIVE Work had metadata-only tool returns and an
+  uninterpreted final TOOL_RESULT.
+- **Handoff limitation:** Controller decisions and genuine
+  peer asset provenance are retained. Metadata-only search
+  records and unfinished Work are not automatically
+  transferred as executable Population Work or direct evidence.
+- **Scientific delta:** NONE yet from Population research.
+  Successful structural transfer is not proof of scientific
+  evolution, novelty, or Level II.
+- **Next:** Observe one autonomously selected Population
+  research segment before deciding whether native knowledge
+  handoff and Worker-output reliability require redesign.
