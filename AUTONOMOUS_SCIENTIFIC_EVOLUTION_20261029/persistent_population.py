@@ -14,6 +14,7 @@ from types import SimpleNamespace
 import population_run as pop
 import population_resume as compat
 from e2core.research_continuity import opportunities_for_journal
+from e2core.peer_rejected_continuity import collect_verified_peer_rejections
 
 PROTOCOL='SCIENTIFIC_PERSISTENT_POPULATION_V1'
 TERMINAL={'HOLD_WITH_RATIONALE','SCOPED_NEGATIVE','REVIEW_WORTHY_CANDIDATE'}
@@ -197,10 +198,27 @@ def prepare_clean_portfolio(mods,source_root,dest):
                 fail('PRIOR_PEER_JOURNAL_HEAD_CHANGED:'+sid)
             name=report['peer_syn']
             record=pop.record_science_tool_results(mods,j,peer_j,peer_s,name)
+            # M22: Native-source-versioned peer Worker lineage closure. This
+            # replays neither research nor tools, and imports no science Asset.
+            # The previous PEER Journal's saved Worker+validation steps are
+            # checked before carrying rejected proposals as opportunities.
+            peer_opportunities=collect_verified_peer_rejections(
+                peer_j,peer_s,name,actual_peer_head,sha=mods.sha,canon=mods.canon)
+            existing=set(j.verify().carried_opportunities)
+            for oid,opportunity in sorted(peer_opportunities.items()):
+                if oid in existing:
+                    fail('M22_PEER_OPPORTUNITY_ID_ALREADY_CARRIED:'+oid)
+                j.append('OPPORTUNITY_CARRIED',{
+                    'opportunity':opportunity,
+                    'upstream_root':str(peer_root),
+                    'upstream_head_sha256':actual_peer_head,
+                    'not_registered_science':True})
             historical_peer_science.append({'peer':name,'original_root':str(peer_root),
                 'verified_head_sha256':actual_peer_head,
                 'transferred_science_tool_results':record['registered_science_tools'],
-                'new_source_ids':record['ids']})
+                'new_source_ids':record['ids'],
+                'rejected_worker_opportunities_carried':len(peer_opportunities),
+                'rejected_opportunity_ids':sorted(peer_opportunities)})
         if len(j.verify().assets)!=len(ss.assets):fail('CARRY_LOST_SCIENCE_ASSETS')
         ids=list(j.verify().assets)
         atomic_write(stage/'FEEDBACK_PREPARE_MANIFEST.json',{
