@@ -152,3 +152,32 @@ proposals separate from scientific assets or evidence. The WSL no-paid regressio
 G14/M15 live roots are frozen and are NOT authorized to resume under the
 new source contract. External archives require explicit hash-pinned opt-in on
 a NEW experiment root. No Level II scientific claim is certified by this.
+
+
+## M18 live evidence and M19 continuity source change (2026-11-01)
+
+M18 (`41b3d47`) was tested on a new, native-pinned ROOT inherited from the
+actual M17 Population. Both independent SYN researchers recovered from distinct
+multiple-JSON Worker outputs. SYN_01 executed a Python charge/Stark feasibility
+calculation but yielded with its last Work still ACTIVE and its last step a
+TOOL_RESULT. SYN_02 obtained an OA full-text result and also yielded with a
+last, uninterpreted TOOL_RESULT. Two peer assets and source-level literature
+records were imported into M18 Population; it has 447 provisional assets, not
+447 externally certified claims. M18 Population remains frozen as historical
+research after its no-paid combine.
+
+M19 native engineering patch (pending local regression/live confirmation):
+- INFORMED-only paginated source_catalog and source_lookup for precisely
+  archived real-tool results; FRESH access to historical sources stays blocked.
+- Every genuine Python/verified-calculation tool request and result is carried
+  under exact original hashes, including REJECTED attempts distinguished from
+  EXECUTED calculations. M19 bootstrap can recover M18 peer computations from
+  original peer Journals only after verifying the saved peer head hash.
+- Last-step TOOL_RESULT pending Worker interpretation is exposed to Council and
+  Native Controller as *work still unresolved*, not as a scientific conclusion.
+- A Native INFORMED source_lookup of an inherited archive creates a new local
+  TOOL_RESULT citation record for the exact returned excerpt, explicitly NOT a
+  second literature/experiment execution.
+- No arbitrary mechanism selection, mandatory continuation, invented evidence,
+  or mutation of M17/M18 Journals. Test and commit before creating a new
+  M19 source-pinned experimental ROOT.

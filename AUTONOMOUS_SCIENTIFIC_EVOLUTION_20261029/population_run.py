@@ -14,6 +14,7 @@ import argparse, contextlib, hashlib, json, os, shutil, sys, tempfile
 from pathlib import Path
 
 import generational_run as gen
+from e2core.evidence_continuity import uninterpreted_last_tool_feedback
 
 PROTO='SCIENTIFIC_POPULATION_GENERATIONAL_V1'
 DIRECT_CLASSES={
@@ -231,6 +232,7 @@ def load_blob_json(j,dig):return json.loads(j.raw(dig))
 
 def record_direct_tool_sources(mods,pop,donor,ds,peer_name):
     total=0;seen=[]
+    pending={x['tool_id'] for x in uninterpreted_last_tool_feedback(donor,ds)}
     for sid,record in ds.sources.items():
         if record['kind']!='TOOL_RESULT':continue
         raw=donor.raw(record['blob']);data=json.loads(raw)
@@ -248,10 +250,55 @@ def record_direct_tool_sources(mods,pop,donor,ds,peer_name):
             'kind':'INHERITED_REAL_EXECUTION_TOOL_RESULT_NOT_NEW_OBSERVATION',
             'origin_peer':peer_name,'original_root':str(donor.root),'original_tool_source_id':sid,
             'original_tool_id':tid,'original_record_sha256':mods.sha(raw),
+            'original_work_id':original['work_id'],
+            'original_request_blob_sha256':original['request_blob'],
+            'original_result_blob_sha256':original['result_blob'],
+            'pending_worker_interpretation':tid in pending,
             'evidence_class':cls,'original_returned_data':data,'not_independently_certified':True},
             'Peer original tool return '+cls+'; not new independent inspection: '+sid)
         total+=1;seen.append(ident)
     return {'registered_direct_sources':total,'ids':seen}
+
+
+
+def record_science_tool_results(mods, dest, donor, ds, peer_name):
+    """Carry every real Python/verified-calculation attempt, with exact tool blobs.
+
+    Saves executed computation and failed calculation as DIFFERENT evidence classes.
+    No tool is run, no calculation is validated, no asset is published here.
+    """
+    count=0;ids=[]
+    pending={x['tool_id'] for x in uninterpreted_last_tool_feedback(donor,ds)}
+    for tid,record in ds.tool_results.items():
+        req=load_blob_json(donor,record['request_blob'])
+        result=load_blob_json(donor,record['result_blob'])
+        if not isinstance(req,dict) or req.get('kind') not in {'python_science','verified_calculation'}:
+            continue
+        if not isinstance(result,dict) or record.get('work_id') not in ds.work:
+            fail('SCIENCE_TOOL_PROVENANCE_MALFORMED:'+tid)
+        actual=record['result_blob'];request=record['request_blob']
+        kind=req['kind'];status=result.get('status')
+        evidence_class=('EXECUTED_COMPUTATION_NOT_SCIENTIFICALLY_VALIDATED'
+                        if status in {'EXECUTED','DELIVERED'}
+                        else 'FAILED_CALCULATION_ATTEMPT_NOT_SCIENTIFIC_NEGATIVE')
+        content={'tool_id':tid,'work_id':record['work_id'],
+                 'request':req,'result':result,'evidence_class':evidence_class}
+        sid=hname(mods,'SRC_INHERITED_TOOL_',
+            {'peer':peer_name,'root':str(donor.root),'tool':tid},22)
+        dest.add_source(sid,'EXTERNAL_AUDIT',{
+            'kind':'INHERITED_SCIENCE_TOOL_EXECUTION_NOT_NEW_OBSERVATION',
+            'origin_peer':peer_name,'original_root':str(donor.root),
+            'original_tool_id':tid,'original_work_id':record['work_id'],
+            'original_request_blob_sha256':request,
+            'original_result_blob_sha256':actual,
+            'original_record_sha256':mods.sha(mods.canon(content)),
+            'evidence_class':evidence_class,
+            'pending_worker_interpretation':tid in pending,
+            'original_returned_data':content,
+            'not_independently_certified':True,'is_a_new_tool_execution':False},
+            'Exact prior '+kind+' '+str(status)+'; not new execution or certified science: '+tid)
+        count+=1;ids.append(sid)
+    return {'registered_science_tools':count,'ids':ids}
 
 
 def import_peer(mods,pop,base_state,peer,root):
@@ -336,14 +383,18 @@ def import_peer(mods,pop,base_state,peer,root):
          'events':len(jrows),'decisions':decisions,'opportunity_assessments':opp,
          'new_assets':imported,'imported_G0_assets':len(base_state.assets),
          'last_program_review':ds.program_reviews[-1] if ds.program_reviews else None,
+         'pending_tool_feedback':uninterpreted_last_tool_feedback(donor,ds),
          'not_scientific_certification':True,'operator_not_choosing_winner':True}
     pop.add_source(source_id,'HISTORICAL_AI',peer_report,
            'Independently generated peer SYN model judgements; not experimental facts')
     direct=record_direct_tool_sources(mods,pop,donor,ds,peer)
+    science=record_science_tool_results(mods,pop,donor,ds,peer)
     if mods.sha(mods.canon(donor._events()[-1]))!=start_head:
         fail('PEER_JOURNAL_CHANGED_DURING_IMPORT:'+peer)
     return {'peer':peer,'source':str(donor.root),'head_sha256':head,
          'new_assets_imported':len(imported),'direct_tool_sources':direct['registered_direct_sources'],
+         'science_tool_sources':science['registered_science_tools'],
+         'pending_tool_feedback':len(peer_report['pending_tool_feedback']),
          'decisions':len(decisions),'last_disposition':ds.program_reviews[-1]['scientific_status'] if ds.program_reviews else None,
          'asset_mapping':imported,'decision_receipt':source_id}
 

@@ -180,6 +180,27 @@ def prepare_clean_portfolio(mods,source_root,dest):
                 'not_registered_science':True})
         carried_sources=carry_registered_external_evidence(mods,j,source,ss)
         imported_sources=pop.record_direct_tool_sources(mods,j,source,ss,'PRIOR_GENERATION')
+        # M19: Before starting a newly pinned root, recover genuine science
+        # tool executions left in prior PEER journals, including unreviewed
+        # Python results not yet represented in the source Population.
+        # Require exact peer Journal head: never import from changed provenance.
+        historical_peer_science=[]
+        for sid,rec in ss.sources.items():
+            if not (sid.startswith('SRC_PEER_DECISION_') and rec.get('kind')=='HISTORICAL_AI'):
+                continue
+            report=json.loads(source.raw(rec['blob']))
+            peer_root=Path(report['original_root']).expanduser().resolve()
+            if not peer_root.is_dir():fail('PRIOR_PEER_JOURNAL_NOT_FOUND:'+sid)
+            peer_j,peer_s=pop.root_status(mods,peer_root)
+            actual_peer_head=mods.sha(mods.canon(peer_j._events()[-1]))
+            if actual_peer_head!=report['head_sha256']:
+                fail('PRIOR_PEER_JOURNAL_HEAD_CHANGED:'+sid)
+            name=report['peer_syn']
+            record=pop.record_science_tool_results(mods,j,peer_j,peer_s,name)
+            historical_peer_science.append({'peer':name,'original_root':str(peer_root),
+                'verified_head_sha256':actual_peer_head,
+                'transferred_science_tool_results':record['registered_science_tools'],
+                'new_source_ids':record['ids']})
         if len(j.verify().assets)!=len(ss.assets):fail('CARRY_LOST_SCIENCE_ASSETS')
         ids=list(j.verify().assets)
         atomic_write(stage/'FEEDBACK_PREPARE_MANIFEST.json',{
@@ -193,6 +214,7 @@ def prepare_clean_portfolio(mods,source_root,dest):
             'base_root':str(dest),'source_assets':len(ss.assets),'new_ids':amap,
             'edges':transfers,'inherited_direct_tool_sources':imported_sources,
             'previously_registered_external_sources_carried':carried_sources,
+            'historical_peer_science_tool_carry':historical_peer_science,
             'unfinished_work_statuses_preserved_as_history':True,
             'unregistered_opportunities_preserved_not_scientific_assets':len(prior_unregistered),
             'new_research_executed':False,'scientific_certification':False}

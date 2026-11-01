@@ -18,6 +18,7 @@ import persistent_population as pp
 import population_run as pop
 import population_resume as compat
 from e2core.research_continuity import opportunities_for_journal, concise_index
+from e2core.evidence_continuity import uninterpreted_last_tool_feedback, inherited_inventory
 
 PROTO='AUTONOMOUS_POPULATION_DISPOSITION_V1'
 PEER_CHOICES={'CONTINUE_RESEARCH','YIELD_TO_POPULATION','ADD_INDEPENDENT_PEER'}
@@ -60,6 +61,14 @@ R_PROMPT='''You are a scientifically independent skeptical reviewer of a PROPOSE
 Return JSON: {"assessment":"SUPPORT_TERMINAL|CHALLENGE_TERMINAL","rationale":"...","unexplored_material_frontiers":[],"risks_of_premature_or_endless_research":[],"limits_of_conclusion":"..."}.'''
 A_PROMPT='''You are the final independent POPULATION science adjudicator. Given a provisional population-wide terminal judgement, an independent skeptical review, and the actual scientific Journal snapshot, resolve whether the WHOLE population should stop or continue. No minimum number of generations or model calls; no forced scientific progress. Scientific judgement is not proof or human certification. Choose CONFIRM_TERMINAL only for the supplied proposed terminal category; otherwise choose CONTINUE_RESEARCH if the present active research has high information value, or NEXT_GENERATION if new independent work on inherited results is worth trying. A single worker HOLD cannot force global termination. Do not treat costs/budgets as scientific reasons.
 Return JSON {"decision":"CONFIRM_TERMINAL|CONTINUE_RESEARCH|NEXT_GENERATION","rationale":"...","remaining_opportunities":[],"termination_scope":"..."}.'''
+
+# Council receives pending-feedback facts, not compulsory decisions.
+S_PROMPT += ('\nM19 provenance continuity: inspect pending_tool_feedback in the '
+    'current research and independent peers. A last TOOL_RESULT was actually '
+    'delivered but has no later Worker response in that Journal; it may have '
+    'scientific information value. YIELD, CONTINUE or NEXT_GENERATION remain '
+    'your autonomous decisions. Never present pending feedback as already '
+    'interpreted or as an experimental validation.\n')
 
 def fail(s): raise RuntimeError(s)
 def out(obj): print(json.dumps(obj,ensure_ascii=False,sort_keys=True),flush=True)
@@ -105,6 +114,8 @@ def root_view(mods,root):
         'historical_asset_count':len(imported),'historical_assets':history,
         'live_asset_count':len(live),'live_assets':[as_asset(x) for x in live.values()],
         'works':works,'recent_controller_decisions':decisions,
+        'pending_tool_feedback':uninterpreted_last_tool_feedback(j,s),
+        'inherited_evidence':inherited_inventory(j,s,'INFORMED'),
         'sources':{'actual_tool_results':len(s.tool_results),'historical_ai':len(imported),
                    'registered_primary':registered_primary_sources(s)},
         'saved_external_calls':pp.paid_calls(s),'program_reviews_total':len(s.program_reviews)}
@@ -116,7 +127,8 @@ def snapshot(mods,experiment,cycle,stage,peer=None):
         'provenance':'VERIFIED_APPEND_ONLY_JOURNALS_UNCERTIFIED_SCIENCE',
         'population_history_recent':[],
         'inherited_base':{'root':cbase['root'],'head':cbase['head'],
-            'all_inherited_assets':cbase['historical_assets']},
+            'all_inherited_assets':cbase['historical_assets'],
+            'inherited_evidence_portfolio':cbase['inherited_evidence']},
         'previous_population_scientific_status':None}
     for f in all_cycle_files(experiment)[-5:]:
         c=canon_file(f)

@@ -19,6 +19,7 @@ from .science_sandbox import run_science_python
 from .literature import crossref_lookup
 from .research_literature import research_literature
 from .research_context import research_capability_state, research_worker_context
+from .evidence_continuity import archived_record, inherited_catalog, inherited_read
 
 CONTROLLER_PROMPT='''You are the autonomous scientific program evolution controller. The original problem is your objective; success is a grounded review-worthy solution candidate or an explicitly scoped justified negative finding, NOT production of many analyses or compulsory novelty. You may freely generate, branch, combine, challenge, suspend and terminate research without any minimum generations, workers or steps. Distinguish (a) inability to attribute an existing observation, (b) inability to propose a testable new mechanism, and (c) inability to continue because evidence/tools are missing. A null for one method does not prove the original problem impossible. If a research avenue stalls, you may explore a materially different avenue if scientifically promising; you may also PAUSE the program rather than invent progress. Do not mistake a hypothesis for an experimentally confirmed discovery. Judge physical plausibility, competing mechanisms, novel conditional predictions, and evidence gaps. Make a scientific decision, not a quota-filling one. On imported independent-cohort assets, examine actual parent-child scientific changes and interactions across cohorts; you are free to decline synthesis if it has low value. Do not force continuation when a research portfolio has low expected information value.
 Scientific evolution responsibility: preserve independent concurrent research until a scientific decision indicates otherwise. Your input explicitly identifies intermediate assets published since your last decision; consider whether they justify a NEW scientific Work before other researchers finish. Scientific evolution means a materially different mechanistic claim, scope, prediction, evidence or counterexample, NOT rephrased text, increased asset count or formal operator labels. Explicitly consider remaining promising independent frontiers when assessing program-level HOLD; a blocked avenue is not automatically a blocked original problem. You may decline any mutation, branch or synthesis if the scientific information value is low. Never force generations, research teams or scientific continuation.
@@ -80,6 +81,18 @@ WORKER_PROMPT += ('\nNATIVE RESEARCH CONTINUITY: new_problems may use '
     'MODEL proposal, not a validated finding or a literature source. '
     'Independently test, revise, abandon or ignore it.\n')
 
+
+# M19 — Source discovery and source-reading are Worker-autonomous; past
+# executions remain evidence records, not automatically validated science.
+WORKER_PROMPT += ("\nM19 inherited evidence: INFORMED Workers may use "
+    "source_catalog with query/offset/limit to discover provenance-verified "
+    "SRC_INHERITED_TOOL_ IDs, then source_lookup with source_ids/offset/limit "
+    "to read serialized evidence or saved computation in successive chunks. "
+    "Evidence is historical, not a new execution or a scientific certificate. "
+    "FRESH Workers cannot discover/read inherited source records. "
+    "After any TOOL_RESULT, independently interpret its actual result before "
+    "claiming it validates a hypothesis; failed retrieval/calculation is not "
+    "a scientific negative.\n")
 
 # M18 — Model-authored correction of an unusable Worker response.
 # Two different scientific documents are NEVER merged or cherry-picked. A
@@ -430,6 +443,12 @@ class Engine:
         if kind=='python_science':return run_science_python(args,cpu_seconds=self.science_cpu_seconds,wall_seconds=self.science_wall_seconds)
         if kind=='literature_lookup':return crossref_lookup(args)
         if kind=='literature_research':return research_literature(args)
+        if kind=='source_catalog':
+            state=self.j.verify()
+            work=state.work[context['work_id']]
+            return inherited_catalog(self.j,state,work['mode'],
+                query=args.get('query',''),offset=args.get('offset',0),
+                limit=args.get('limit',12))
         if kind=='primary_catalog':
             s=self.j.verify()
             return {'status':'DELIVERED','source_records':[{'id':i,'description':v.get('description',''),'kind':'PRIMARY'} for i,v in s.sources.items() if v['kind']=='PRIMARY'],'provenance':'LOCAL_REGISTERED_PRIMARY_CATALOG_NOT_INDEPENDENT_VALIDATION'}
@@ -443,9 +462,20 @@ class Engine:
             # no FRESH worker may access historical AI or external audits.
             allowed.update(i for i,v in s.sources.items() if v['kind']=='PRIMARY')
             if s.r5_policy:allowed.update(i for i,v in s.sources.items() if v['kind']=='TOOL_RESULT' and v.get('work_id')==context['work_id'])
+            if w['mode']=='INFORMED':
+                allowed.update(sid for sid in s.sources
+                    if archived_record(self.j,s,sid) is not None)
             if any(i not in allowed for i in ids):return {'status':'REJECTED','error_code':'UNAUTHORIZED_SOURCE'}
             if w['mode']=='FRESH' and any(s.sources[i]['kind'] not in ({'PRIMARY','TOOL_RESULT'} if s.r5_policy else {'PRIMARY'}) for i in ids):return {'status':'REJECTED','error_code':'FRESH_SOURCE_BLOCKED'}
-            return {'status':'DELIVERED','source_records':[{'id':i,'value':json.loads(self.j.raw(s.sources[i]['blob']))} for i in ids],
+            source_records=[]
+            for i in ids:
+                archived=inherited_read(self.j,s,i,
+                    offset=args.get('offset',0),limit=args.get('limit',12000))
+                if isinstance(archived,dict) and archived.get('status')=='REJECTED':
+                    return archived
+                source_records.append(archived if archived is not None else
+                    {'id':i,'value':json.loads(self.j.raw(s.sources[i]['blob']))})
+            return {'status':'DELIVERED','source_records':source_records,
                   'scientific_certification':False}
         return {'status':'REJECTED','error_code':'UNSUPPORTED_TOOL_KIND'}
     def controller(self,ident):
@@ -603,6 +633,26 @@ class Engine:
                 self.j.append('SOURCE_REGISTERED',{'id':sid,'kind':'TOOL_RESULT',
                     'work_id':wid,'blob':self.j.blob(source_data),
                     'description':req.get('kind','Literature')+' '+str(result.get('evidence_class','METADATA'))+' returned to '+wid+'; record, not certified interpretation'})
+            # Reading inherited sources is a real *local* lookup, not an
+            # independent experiment. Its exact, bounded returned excerpt can
+            # be cited by an INFORMED Work through its own TOOL_RESULT source.
+            # The original archived record and all upstream hashes remain intact.
+            if (self._native_tool_contract and self.j.verify().r5_policy
+                    and req.get('kind')=='source_lookup'
+                    and result.get('status')=='DELIVERED'
+                    and any(isinstance(x,dict) and x.get('kind')=='EXTERNAL_AUDIT'
+                            for x in result.get('source_records',[]))):
+                sid='SRC_EVIDENCE_'+sha(canon({'tool_id':ident,'req':req,
+                    'inherited_archive_read':True}))[:25]
+                result={**result,'linked_source_id':sid,
+                    'evidence_class':'INHERITED_ARCHIVE_EXCERPT_NOT_NEW_OBSERVATION'}
+                source_data={'tool_id':ident,'work_id':wid,'request':req,
+                    'result':result,'evidence_class':result['evidence_class'],
+                    'primary_observation_verification':'PRIOR_EXECUTION_UNCERTIFIED',
+                    'not_a_new_literature_or_experiment_execution':True}
+                self.j.append('SOURCE_REGISTERED',{'id':sid,'kind':'TOOL_RESULT',
+                    'work_id':wid,'blob':self.j.blob(source_data),
+                    'description':'Read-only inherited source excerpt returned to '+wid})
             self.j.append('TOOL_RECORDED',{'id':ident,'work_id':wid,'request_blob':self.j.blob(req),'result_blob':self.j.blob(result)})
             self.j.step(wid,'TOOL_RESULT',{'tool_id':ident,'result':result,'is_empirical_evidence':False})
             # Even if the worker requested RETURN, tool output must be interpreted by worker first.

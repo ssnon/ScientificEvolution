@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse, json
 from collections import Counter
 from .core import EvolutionJournal
+from .evidence_continuity import inherited_inventory, uninterpreted_last_tool_feedback
 
 NATIVE_TOOLS = [
     {'kind':'literature_research','purpose':'Autonomously discover scholarly records and read accessible original evidence',
@@ -19,7 +20,8 @@ NATIVE_TOOLS = [
                 'supplements','supplement_files','data_links','zenodo','read_zenodo_file','read_arxiv_pdf'],
      'evidence_caveat':'Search hits/links are metadata, not experimental evidence. Read the text before making literature-grounded scientific claims.'},
     {'kind':'literature_lookup','purpose':'Crossref bibliographic metadata by topic/DOI (NOT full text)'},
-    {'kind':'source_lookup','purpose':'Read explicitly permitted locally registered primary records or your own TOOL_RESULT source IDs'},
+    {'kind':'source_lookup','purpose':'Read authorized PRIMARY/own TOOL_RESULT, or chunked inherited provenance-verified source data for INFORMED Workers'},
+    {'kind':'source_catalog','purpose':'INFORMED-only searchable/paginated inventory of inherited real tool results and prior computations'},
     {'kind':'primary_catalog','purpose':'List available operator-verified PRIMARY registrations'},
     {'kind':'python_science','purpose':'Request sandboxed scientific code execution; inspect the recorded tool result'},
     {'kind':'verified_calculation','purpose':'Request bounded numeric calculations on explicitly provided scenarios'},
@@ -86,6 +88,8 @@ def research_capability_state(j,contract=None):
       'evidence_inventory':{'primary_count':summaries.get('PRIMARY',0),
         'retrieved_tool_source_count':summaries.get('TOOL_RESULT',0),
         'recent_registered_evidence':sources[-8:]},
+      'inherited_evidence':inherited_inventory(j,s,'INFORMED'),
+      'pending_local_tool_feedback':uninterpreted_last_tool_feedback(j,s),
       'attempt_inventory':{'total_recorded_tools':len(attempts),
         'recorded_literature_attempts':len(literature),
         'by_kind':dict(Counter(a['tool_kind'] for a in attempts)),
@@ -109,6 +113,7 @@ def research_worker_context(j,work_id,contract=None):
       'available_sources':available[-8:],
       'primary_count':inventory.get('PRIMARY',0),
       'own_tool_result_source_count':inventory.get('TOOL_RESULT',0),
+      'inherited_evidence':inherited_inventory(j,s,w['mode']),
       'own_recorded_tool_attempts':len(attempts),
       'own_recent_tool_attempts':attempts[-6:],
       'guidance':'If source evidence is critical and may be accessible, consider asking a tool, reading its actual return, and linking exact source IDs to scientific claims. '

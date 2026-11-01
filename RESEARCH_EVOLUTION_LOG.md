@@ -93,3 +93,21 @@ Record separately: `IMPLEMENTED` (code exists); `MOCK_VERIFIED` (controlled fixt
 - **Scientific delta:** NONE established for the Population despite successful structural PEER handoff. The Council considered the imported charge/height/orientation candidate provisional and overlapping historical mechanisms. No inspected new primary source, bounded discriminator, or Level II result was obtained.
 - **Engineering follow-up (M18, source patch pending local regression):** In-place Native Engine change permits exactly one model-authored serialization correction on an ACTIVE Work after a malformed Worker response; all prior raw output retained. No code heuristic chooses among scientific answers or executes any tool from ambiguous output. Normal Worker JSON parser remains fail-closed. After one unsuccessful correction, Work remains operationally BLOCKED rather than counting as scientific evidence. This is not a guarantee that the model will produce correct JSON or research results.
 - **Execution boundary:** M17 Journals and prior source-pinned experiment remain unchanged; Git tracks new Native Engine source for subsequent version-pinned execution.
+
+
+## 2026-11-01 — M18 live PEER research, M19 evidence-use engineering
+
+- M18 Population merged no-paid at source pin `41b3d47`, 447 provisional
+  assets (445 inherited + 2 from SYN_01), with original peer Journals intact.
+- Format correction worked in both real SYN_01 and SYN_02; the two Workers
+  progressed to literature/tool execution. New literature evidence was actually
+  retrieved. SYN_01 ran an illustrative point-charge/Stark calculation using
+  unconstrained physical parameters (not independent empirical validation).
+- Both peers YIELDed to Population with their last Work ACTIVE and last step
+  TOOL_RESULT. Existing source-carry transferred literature EXTERNAL_AUDIT but
+  did not make it discoverable/quotable to INFORMED Workers, and did not yet
+  transfer the executed Python result. Council knew the Work was ACTIVE but not
+  which source/computation remained to be interpreted.
+- M19 source patch addresses this information continuity boundary without
+  requiring a particular scientific outcome. Its scientific efficacy remains
+  UNVERIFIED until local tests and a new independently source-pinned run.
