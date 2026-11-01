@@ -11,7 +11,7 @@ from __future__ import annotations
 import argparse, json
 from collections import Counter
 from .core import EvolutionJournal
-from .evidence_continuity import inherited_inventory, uninterpreted_last_tool_feedback
+from .evidence_continuity import inherited_inventory, uninterpreted_last_tool_feedback, inherited_planning_brief
 
 NATIVE_TOOLS = [
     {'kind':'literature_research','purpose':'Autonomously discover scholarly records and read accessible original evidence',
@@ -89,6 +89,7 @@ def research_capability_state(j,contract=None):
         'retrieved_tool_source_count':summaries.get('TOOL_RESULT',0),
         'recent_registered_evidence':sources[-8:]},
       'inherited_evidence':inherited_inventory(j,s,'INFORMED'),
+      'inherited_evidence_planning_brief':inherited_planning_brief(j,s,'INFORMED'),
       'pending_local_tool_feedback':uninterpreted_last_tool_feedback(j,s),
       'attempt_inventory':{'total_recorded_tools':len(attempts),
         'recorded_literature_attempts':len(literature),
@@ -114,6 +115,8 @@ def research_worker_context(j,work_id,contract=None):
       'primary_count':inventory.get('PRIMARY',0),
       'own_tool_result_source_count':inventory.get('TOOL_RESULT',0),
       'inherited_evidence':inherited_inventory(j,s,w['mode']),
+      **({'inherited_evidence_planning_brief':inherited_planning_brief(j,s,'INFORMED')}
+         if w['mode']=='INFORMED' else {}),
       'own_recorded_tool_attempts':len(attempts),
       'own_recent_tool_attempts':attempts[-6:],
       'guidance':'If source evidence is critical and may be accessible, consider asking a tool, reading its actual return, and linking exact source IDs to scientific claims. '

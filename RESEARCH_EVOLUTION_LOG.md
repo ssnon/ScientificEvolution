@@ -111,3 +111,19 @@ Record separately: `IMPLEMENTED` (code exists); `MOCK_VERIFIED` (controlled fixt
 - M19 source patch addresses this information continuity boundary without
   requiring a particular scientific outcome. Its scientific efficacy remains
   UNVERIFIED until local tests and a new independently source-pinned run.
+
+
+## 2026-11-01 — M19 first pooled Population and planned M20
+
+- 2 independent M19 peers each ran 12 research calls plus 1 Council call;
+  both elected YIELD. First pooled Population contained 455 provisional assets.
+- M19 Population 16-call research segment committed 2 Controller decisions
+  and 3 additional provisional assets (458 total). Two delivered literature
+  tool calls returned bibliographic metadata; neither executed an inherited
+  source lookup. Council chose CONTINUE_RESEARCH, and no source-backed novel
+  physics discriminator was demonstrated.
+- Read-only Controller audit confirmed 58 inherited records visible only as
+  source-class counts and 1 pending interpretation, while concrete known
+  PMCID/title/source IDs were absent from planning context. The active Worker
+  remained mid-format-repair. M20 source change plans to make evidence options
+  concrete without compulsory reuse or cross-contaminating FRESH.

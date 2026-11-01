@@ -94,6 +94,24 @@ WORKER_PROMPT += ("\nM19 inherited evidence: INFORMED Workers may use "
     "claiming it validates a hypothesis; failed retrieval/calculation is not "
     "a scientific negative.\n")
 
+# M20: Evidence metadata improves autonomous source-versus-new-work choices.
+# An inherited OA full text is real retrieved source material, though neither
+# registered PRIMARY nor an independently certified scientific interpretation.
+# A pre-experimental hypothesis need not already have a perfect joint precedent.
+CONTROLLER_PROMPT += ('\nM20 evidence-aware planning: research_capability_state '
+    'includes inherited_evidence_planning_brief with actual titles, identifiers, '
+    'Source IDs, and pending computations. A zero current-root retrieval count '
+    'does NOT mean no usable real primary text was retrieved in prior roots. '
+    'Distinguish inherited experimental text, AI claims, metadata-only searches, '
+    'executed but unchecked computations, and operator-registered PRIMARY. '
+    'Choose FRESH or INFORMED for the scientific value of independence versus '
+    'critical re-use, not automatically because an inherited source lacks '
+    'a new independent certification. An original pre-experimental proposal '
+    'does NOT require an existing paper to have performed the full decisive '
+    'experiment; partial prior art and quantitative strong-null tests are also '
+    'scientifically meaningful. Retain full discretion and do not equate '
+    'missing prior joint demonstrations with proof of novelty.\n')
+
 # M18 — Model-authored correction of an unusable Worker response.
 # Two different scientific documents are NEVER merged or cherry-picked. A
 # malformed multi-document response remains saved exactly as produced. A single

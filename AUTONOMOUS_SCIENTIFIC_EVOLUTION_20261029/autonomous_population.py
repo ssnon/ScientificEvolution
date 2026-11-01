@@ -18,7 +18,7 @@ import persistent_population as pp
 import population_run as pop
 import population_resume as compat
 from e2core.research_continuity import opportunities_for_journal, concise_index
-from e2core.evidence_continuity import uninterpreted_last_tool_feedback, inherited_inventory
+from e2core.evidence_continuity import uninterpreted_last_tool_feedback, inherited_inventory, inherited_planning_brief
 
 PROTO='AUTONOMOUS_POPULATION_DISPOSITION_V1'
 PEER_CHOICES={'CONTINUE_RESEARCH','YIELD_TO_POPULATION','ADD_INDEPENDENT_PEER'}
@@ -69,6 +69,14 @@ S_PROMPT += ('\nM19 provenance continuity: inspect pending_tool_feedback in the 
     'scientific information value. YIELD, CONTINUE or NEXT_GENERATION remain '
     'your autonomous decisions. Never present pending feedback as already '
     'interpreted or as an experimental validation.\n')
+
+S_PROMPT += ('\nM20 evidence-aware decisions: inherited_evidence_planning_brief '
+    'is a deterministic source inventory with concrete IDs, not a scientific '
+    'ranking or certification. Distinguish prior real full-text retrievals '
+    'from current-root tool history (which may be zero), and consider whether '
+    'reading an existing primary passage or calculation would be more '
+    'informative than new retrieval. You may still choose fresh independent '
+    'science, continue, yield, or terminate based on your own judgement.\n')
 
 def fail(s): raise RuntimeError(s)
 def out(obj): print(json.dumps(obj,ensure_ascii=False,sort_keys=True),flush=True)
@@ -148,6 +156,10 @@ def snapshot(mods,experiment,cycle,stage,peer=None):
     else:
         context['current_research']=root_view(mods,cycle['population_root'])
         context['independent_peers']=[{'name':name,'research':root_view(mods,path)} for name,path in cycle['peers'].items()]
+        # M20: show the shared Population Council actual archived source identities
+        # only after independent peer research has pooled.
+        pj=mods.J(cycle['population_root'])
+        context['inherited_evidence_planning_brief']=inherited_planning_brief(pj,pj.verify(),'INFORMED')
     return context
 
 def meta_path(experiment):return Path(experiment)/'AUTONOMOUS_META'

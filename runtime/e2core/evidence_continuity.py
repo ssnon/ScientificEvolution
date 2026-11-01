@@ -117,6 +117,118 @@ def inherited_inventory(j,state,mode='INFORMED'):
             'historical_not_reexecuted_or_certified':True}
 
 
+
+
+def inherited_planning_brief(j, state, mode='INFORMED', *, max_groups=20):
+    """Bounded, deterministic provenance index for model research decisions.
+
+    This is a *bibliographic and execution inventory*, not a science summary,
+    search-ranking judgement, new empirical observation, or scientific policy.
+    Preserve full source IDs in the Journal and in source_catalog; group repeated
+    views of the same documented PMCID/DOI to reduce false evidence inflation.
+    FRESH receives no historical identities or content from this API.
+    """
+    if mode != 'INFORMED':
+        return {'historical_records_excluded_from_fresh':True,
+                'source_groups':[], 'pending_results':[]}
+    if type(max_groups) is not int or not 1 <= max_groups <= 60:
+        raise ValueError('M20_INVALID_INDEX_GROUP_LIMIT')
+    groups = {}
+    pending = []
+    n_records = 0
+    for sid in sorted(state.sources):
+        item = archived_record(j,state,sid)
+        if item is None:
+            continue
+        n_records += 1
+        info = archive_summary(sid,item)
+        data = item['original_returned_data']
+        req = data.get('request') or {}
+        result = data.get('result') or {}
+        if not isinstance(req,dict):req = {}
+        if not isinstance(result,dict):result = {}
+        args = req.get('arguments') or {}
+        if not isinstance(args,dict):args = {}
+        pmcid = result.get('pmcid') or args.get('pmcid')
+        doi = result.get('doi') or args.get('doi')
+        title = result.get('title')
+        doc_hash = result.get('source_sha256') or data.get('full_document_sha256')
+        # Never conflate unrelated records merely because both lack identity.
+        if isinstance(pmcid,str) and pmcid.strip():
+            key='PMCID:'+pmcid.strip().upper()
+        elif isinstance(doi,str) and doi.strip():
+            key='DOI:'+doi.strip().casefold()
+        elif isinstance(doc_hash,str) and doc_hash.strip():
+            key='SHA256:'+doc_hash.strip()
+        else:
+            key='RECORD:'+sid
+        group=groups.setdefault(key,{
+            'document_key':key,'title':None,'pmcid':None,'doi':None,
+            'source_records':0, 'source_ids':[], 'evidence_classes':set(),
+            'tool_actions':set(),'origin_peers':set(),
+            'has_pending_worker_interpretation':False,
+            'document_sha256':None,
+            'read_fulltext_ids':[],
+        })
+        group['source_records'] += 1
+        group['source_ids'].append(sid)
+        group['evidence_classes'].add(item['evidence_class'])
+        if info.get('action'):group['tool_actions'].add(str(info['action']))
+        if info.get('action')=='read_fulltext' and item['evidence_class']=='OA_FULLTEXT_TEXT':
+            group['read_fulltext_ids'].append(sid)
+        if info.get('origin_peer'):group['origin_peers'].add(str(info['origin_peer']))
+        if isinstance(title,str) and title and group['title'] is None:group['title']=title[:260]
+        if isinstance(pmcid,str) and pmcid:group['pmcid']=pmcid
+        if isinstance(doi,str) and doi:group['doi']=doi
+        if isinstance(doc_hash,str) and doc_hash and group['document_sha256'] is None:
+            group['document_sha256']=doc_hash
+        if item.get('pending_worker_interpretation'):
+            group['has_pending_worker_interpretation']=True
+            pending.append({
+                'source_id':sid, 'tool_kind':info.get('tool_kind'),
+                'tool_status':info.get('tool_status'),
+                'evidence_class':item['evidence_class'],
+                'original_request_blob_sha256':item.get('original_request_blob_sha256'),
+                'original_result_blob_sha256':item.get('original_result_blob_sha256'),
+                'requires_new_worker_judgement':True,
+                'not_independently_scientifically_validated':True,
+            })
+    formatted=[]
+    for key in sorted(groups):
+        group=groups[key]
+        # Full inventory stays discoverable; these example IDs are not a selection
+        # of hypotheses or evidence quality and do not authorize unread conclusions.
+        sample=sorted(group['source_ids'])
+        formatted.append({
+            'document_key':group['document_key'],
+            'title':group['title'],'pmcid':group['pmcid'],'doi':group['doi'],
+            'source_records':group['source_records'],
+            'example_source_ids':sample[:3],
+            'direct_fulltext_source_id':(sorted(group['read_fulltext_ids'])[0]
+                                         if group['read_fulltext_ids'] else None),
+            'additional_source_ids_in_catalog':max(0,len(sample)-3),
+            'evidence_classes':sorted(group['evidence_classes']),
+            'tool_actions':sorted(group['tool_actions']),
+            'origin_peers':sorted(group['origin_peers']),
+            'has_pending_worker_interpretation':group['has_pending_worker_interpretation'],
+            'document_sha256':group['document_sha256'],
+        })
+    return {
+        'readable_source_records':n_records,
+        'distinct_document_or_execution_groups':len(formatted),
+        'source_groups':formatted[:max_groups],
+        'undisplayed_groups':max(0,len(formatted)-max_groups),
+        'ordering':'DETERMINISTIC_DOCUMENT_IDENTIFIER_NOT_SCIENTIFIC_RANKING',
+        'pending_results':pending,
+        'source_discovery_for_informed':'source_catalog(query,offset,limit)',
+        'source_read_for_informed':'source_lookup(source_ids,offset,limit)',
+        'fresh_does_not_receive_this_index':True,
+        'historical_sources_are_not_new_current_root_tool_executions':True,
+        'retrieved_primary_text_is_not_the_same_as_operator_registered_PRIMARY':True,
+        'bibliography_or_tool_execution_does_not_certify_scientific_claims':True,
+    }
+
+
 def uninterpreted_last_tool_feedback(j, state):
     """Identify only feedback that is last in a Work's Journal step sequence.
 

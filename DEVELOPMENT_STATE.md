@@ -181,3 +181,25 @@ M19 native engineering patch (pending local regression/live confirmation):
 - No arbitrary mechanism selection, mandatory continuation, invented evidence,
   or mutation of M17/M18 Journals. Test and commit before creating a new
   M19 source-pinned experimental ROOT.
+
+
+## M20 evidence-aware research planning — development patch (2026-11-01)
+
+M19 `b8eafe0` engineering was committed and live tested. M19 Population
+CYCLE_000 pooled 447 inherited + 8 peer assets and exposed 58 preserved
+source records, including 1 unreviewed actual Python/Stark calculation.
+A subsequent 16-call Population slice (2 committed Controller decisions, 2
+metadata-only searches, 3 new provisional assets) chose FRESH again. Actual
+Controller inputs included only evidence-class counts and pending count, not
+specific archive PMCID/title/source IDs. It judged no current-root retrieval
+had yet occurred while previous real full-text retrievals existed. Council
+chose CONTINUE_RESEARCH. The active FRESH Work ended on FORMAT_REPAIR_REQUIRED;
+no Level II result or failed scientific negative was certified.
+
+M20 adds a bounded deterministic, non-ranking planning index. Duplicate
+PMCID/DOI source records are grouped without deleting individual Journal
+sources; pending tool results remain separately visible. Controller and pooled
+Population Council see real archive titles and source IDs, and INFORMED
+Workers see the index. FRESH Workers remain isolated. No hypothesis/mode is
+forced. M19 root stays byte-pinned and MUST NOT be resumed with M20 source.
+Only initialize M20 in a NEW native-pinned experiment after no-paid regression.
