@@ -44,3 +44,19 @@ Record separately: `IMPLEMENTED` (code exists); `MOCK_VERIFIED` (controlled fixt
 ## Maintenance boundary
 
 `PROJECT_VISION.md` holds the stable objective; `DEVELOPMENT_STATE.md` holds latest state; this log accumulates evidence. Do not paste private raw Journals or provider requests/responses into a public repository. Update with meaningful commits and keep failed/negative episodes, not only positive milestones. Source-code pins apply to runtime Python bytes; documentation commits do not change pinned source bytes.
+
+## 2026-11-01 — M17 SYN_02 evidence audit
+
+- **Source:** M17 CYCLE_000/SYN_02, read-only local Journal audit.
+- **Execution:** OpenAlex search failed with HTTP 429 (EVIDENCE_UNAVAILABLE).
+  Europe PMC search succeeded but returned BIBLIOGRAPHIC_METADATA
+  for the review PMC9952515; no primary full text was inspected.
+- **Format:** Final Worker response contained two distinct valid
+  JSON documents (DISTINCT_MULTIPLE_JSON_REJECTED); runtime
+  preserved the raw response and blocked the Work.
+- **Scientific delta:** NONE from primary-source inspection or
+  quantitative verification. The earlier charge-height/orientation
+  hypothesis remains model-proposed and unverified.
+- **Disposition:** Council YIELD_TO_POPULATION remains authoritative;
+  source access failure and format rejection are not scientific
+  falsification. SYN_01 remains the active independent research peer.
