@@ -1,7 +1,7 @@
-<!-- CURRENT_STATE_2026_11_01_M17 -->
+<!-- CURRENT_STATE_2026_11_01_M20 -->
 # ScientificEvolution — Current Development State
 
-**Current snapshot:** 2026-11-01 (KST). **Development branch:** `dev/research-continuity-v1`. **Native runtime baseline:** `944d1a7` (M17 historical Work scope). This is a status record, not experimental evidence or a scientific certificate.
+**Current snapshot:** 2026-11-01 (KST). **Development branch:** `dev/research-continuity-v1`. **Native runtime baseline:** `c4331ec` (M20 evidence-aware planning). This is a status record, not experimental evidence or a scientific certificate.
 
 **Read first:** [PROJECT_VISION.md](PROJECT_VISION.md) (scientific mission and invariants), [RESEARCH_EVOLUTION_LOG.md](RESEARCH_EVOLUTION_LOG.md) (dated real-run observations and scientific deltas). The previous 2026-10-31 development snapshot is preserved verbatim below.
 
@@ -203,3 +203,13 @@ Population Council see real archive titles and source IDs, and INFORMED
 Workers see the index. FRESH Workers remain isolated. No hypothesis/mode is
 forced. M19 root stays byte-pinned and MUST NOT be resumed with M20 source.
 Only initialize M20 in a NEW native-pinned experiment after no-paid regression.
+
+
+## M20 live two-peer research checkpoint (2026-11-01)
+
+- **Actual pinned native source:** `c4331ecc558c1fe6237005f1ad8095db80237e5d`; experiment `$HOME/ScientificEvolution_runs/M20_FROM_M19_POPULATION_20261101_01`, `CYCLE_000`, stage **PEERS**. This is a checkpoint, not a Level II certification.
+- **Carry baseline:** 458 provisional inherited assets, 58 readable inherited tool-source records in 18 planning groups (all visible), one historical Python/Stark result pending prior interpretation. This evidence index is available to Controller/INFORMED, not FRESH Worker.
+- **Two newly executed peer segments:** SYN_01 +8 saved research calls; SYN_02 +8; total research-root calls now 24, Council/meta-root calls now 3. No unsaved calls reported. No Population combine or pooled synthesis yet.
+- **SYN_01:** Active INFORMED `W_M20_CHALLENGE_MATCHED_SERS_NULLS_001`; published 3 new provisional assets: `A_M20_COMPLEXITY_CONTROLLED_IDENTIFIABILITY_001` (COUNTEREXAMPLE), `A_M20_COMPLEXITY_SWEEP_TEST_001` (PREDICTION), `A_M22_STARK_FEASIBILITY_BOUNDARY_001` (SUBPROBLEM). The first two restrict interpretation of finite-exposure matched diffusion/semi-Markov simulations; the third raises a conditional, unquantified Stark detectability boundary. Two new python_science tools EXECUTED, one verified_calculation REJECTED (input error); last executed result is awaiting Worker interpretation. Several other proposed assets were rejected by BAD_ASSET_PARENTS or UNAUTHORIZED_ASSET_PARENT; raw model and tool records remain preserved.
+- **SYN_02:** Controller independently chose INFORMED VERIFY of previously retrieved SERS evidence. Published provisional `A_ELECTROCHEMICAL_SELF_GATE_001`, proposing charge–double-layer–barrier feedback and conditional hysteresis/ionic-strength predictions, **without a new source lookup or new tool result in the segment**. Council found substantial overlap with inherited feedback hypotheses and chose YIELD_TO_POPULATION, preserving its verification Work as historically ACTIVE/incomplete. Citation of archived source IDs is not proof the original text was newly inspected.
+- **Council:** SYN_01 CONTINUE_RESEARCH; SYN_02 YIELD_TO_POPULATION. No global scientific terminal state, no independently verified Level II candidate. Next: allow scientific scheduling to continue SYN_01 until its Council autonomously yields or changes disposition, then observe native COMBINE → POPULATION and the effect on new research decisions.
