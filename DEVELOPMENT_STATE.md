@@ -1,3 +1,58 @@
+<!-- CURRENT_STATE_2026_11_01_M17 -->
+# ScientificEvolution — Current Development State
+
+**Current snapshot:** 2026-11-01 (KST). **Development branch:** `dev/research-continuity-v1`. **Native runtime baseline:** `944d1a7` (M17 historical Work scope). This is a status record, not experimental evidence or a scientific certificate.
+
+**Read first:** [PROJECT_VISION.md](PROJECT_VISION.md) (scientific mission and invariants), [RESEARCH_EVOLUTION_LOG.md](RESEARCH_EVOLUTION_LOG.md) (dated real-run observations and scientific deltas). The previous 2026-10-31 development snapshot is preserved verbatim below.
+
+## Scientific north star
+
+The objective is a **general-purpose autonomous pre-experimental AI Scientist**, not a SERS-only pipeline, knowledge-graph product, or fixed agent workflow. Given unresolved P0, independent AI researchers propose, critique, revise, calculate, acquire actual literature evidence and evaluate competing mechanisms; Population steering selects whether and how to propagate results into new independent scientific decisions, further studies and generations. Valid dispositions include a review-worthy Level II pre-experimental candidate and a rigorously scoped, independently challenged lack-of-progress decision. Neither fixed generation count nor number of model calls/assets is a scientific success criterion.
+
+**Level II** means a physically defensible, meaningfully novel and falsifiable proposal with concrete predictions distinguishable from strong null mechanisms, credible prior-art comparison, experimental observables/controls and explicit uncertainty. It is not an experimentally verified discovery. Models and tools may assess these conditions, but such assessments are not external certification. A tool failure is not a scientific negative; a local HOLD is not an impossibility theorem for P0.
+
+## Verified architecture and boundaries
+
+- `runtime/e2core/{core,provider,engine,research_continuity}.py`: provenance-preserving append-only Journal, saved/replay-safe model calls, actual Controller/Work/Worker/tool execution, independent and inherited research context, typed lineage and rejected-proposal continuity.
+- `runtime/scientific_problem_evolution.py`, `scientific_closed_loop_v3.py`, `scientific_research_readiness_v4.py`: novelty/impact/opportunity/readiness assessments and scientific continuation. LLM assessment is advisory, not experimental verification.
+- `AUTONOMOUS_SCIENTIFIC_EVOLUTION_20261029/{generational_run,persistent_population,autonomous_population,population_resume}.py`: native source-pinned experiment creation, independent peer orchestration, researcher/Population Council decisions, synthesis/combination and generation continuity.
+- M16 `723e149`: new native Python-byte source pin and historical rejected-opportunity handoff; historic V3 guards remain separate.
+- M17 `944d1a7`: historical G14 Work status is context only, **not executable current-root Work**. The AI may explicitly authorize a new Work to continue past science; it cannot KEEP/REACTIVATE a Work that is absent from the current Journal. User ran all 54 no-paid regressions successfully (Continuity 24, V3 9, V4 13, Clean 8).
+
+Historical hypotheses, primary sources, executed research outputs, problem/asset ancestry and rejected suggestions remain different kinds of record. FRESH must not silently inherit earlier AI answers. Operational budget/source-pin boundaries cannot be conflated with scientific conclusions.
+
+## Last operator-reported research status
+
+| Root / experiment | Observed execution | Evidence status |
+| --- | --- | --- |
+| Frozen G14: `$HOME/ScientificEvolution_runs/AUTONOMOUS_POPULATION_20261029/CYCLE_014/POPULATION` | 1,638 journal events and 444 assets in historical snapshot; original root remains frozen | Historical AI research, not Level II certified |
+| M16 clean: `$HOME/ScientificEvolution_runs/M16_G14_NATIVE_CLEAN_20261031_01` | 8 saved external calls; 3 rejected Controllers due to G14 Work IDs incorrectly referenced as current-root Work | **Operational defect**, no scientific negative or committed new Work |
+| M17 clean: `$HOME/ScientificEvolution_runs/M17_G14_NATIVE_CLEAN_20261101_01` | 2 committed PEER Controllers; 12 saved research-root calls plus 2 Council/meta calls (14 total). SYN_01 has an ACTIVE primary-source audit, no worker call yet. SYN_02 has 3 saved Worker calls, 2 tool records (`EVIDENCE_UNAVAILABLE`, `DELIVERED`), one new unverified hypothesis, final `BLOCKED_FORMAT` and Council `YIELD_TO_POPULATION`. Stage still PEERS. | Real model/tools and critical peer steering observed; **cross-peer scientific synthesis and improved downstream hypothesis not yet demonstrated** |
+
+**Provenance qualifications:** G14 provided 444 inherited assets and 2 direct historical tool sources, whose scientific content is not independently certified here. The separate 19-entry archive and G14 rejected-proposal Journal contain the *same 19 original submissions*; do not inflate these to 38 opportunities. M17 carries 19 unique rejected opportunities, not an additional archive pin. Both M17 peers inherit the common G14 historical asset base and are independent *continuing peers*, not fully seedless FRESH researchers. SYN_02's `A_charge_height_gating_001` (charge state changing adsorption height/orientation, giving SERS intermittency without desorption) was assessed by Council as substantially overlapping earlier G14 candidates; this is not a Level II result. The contents of the `DELIVERED` tool response and the final format audit still need read-only inspection.
+
+## Single near-term milestone: first genuine scientific evolution
+
+1. **Read-only inspect** SYN_02 tool request/results and `BLOCKED_FORMAT`; distinguish OA full text, abstract, bibliographic metadata and access failure. Do not overinterpret `DELIVERED` or rewrite the saved model response.
+2. **Resume M17 SYN_01's ACTIVE Work** on the unchanged, source-pinned runtime, giving the Worker an opportunity to actually acquire or evaluate relevant primary evidence. Council decides when the peer yields; do not manually choose a scientific winner.
+3. **Observe native PEER -> COMBINE -> POPULATION**: verify direct provenance of each peer's scientific claims, disagreements and actual tool outputs. Have AI choose follow-up tasks autonomously; no compulsory FUSE.
+4. **Demonstrate a causal scientific delta**: prior claim/null/prediction -> independent critique or evidence/calculation -> changed claim, narrowed scope, discriminating prediction or carefully scoped negative. Asset counts and generation numbers are not adequate substitutes.
+5. **Assess Level II only when warranted** by the actual science: physical constraints, inspected prior art, strong nulls, predicted test observables, expected feasibility and independent skeptical review. No imposed mechanism or forced positive result.
+
+Do not open an unbounded run before saved-call states, evidence-class truth and operational stops are understood. Safety or cost guardrails remain **operational**, not a research success criterion.
+
+## Collaboration and repository truth protocol
+
+- For each substantive planning/code turn, read `PROJECT_VISION.md`, this current state and `RESEARCH_EVOLUTION_LOG.md`, confirm the Git branch/HEAD and inspect the actual relevant source. The remote GitHub code is not equivalent to unpushed WSL work or unpublished research Journals.
+- Update this document when the research phase or verified engineering state materially changes; append actual findings, failed experiments, falsifications and remaining uncertainties to the evidence log. Do not edit the immutable vision merely to justify a temporary workaround.
+- Review diff and tests, commit/push meaningful code+documentation or doc-only milestones. Never commit a raw Journal, provider response, secret, billing record or local research-root archive. Use `$HOME` in operator instructions; files delivered by ChatGPT are placed directly under `$HOME` by the operator.
+- If a pinned runtime Python source changes, preserve old M16/M17 experiments and bootstrap a new source-pinned root unless an explicit, independently checked migration is authorized. Do not silently re-execute an old root under changed source.
+- GitHub can be reviewed during future active chat turns, but this document is **not** a promise of unattended repository monitoring between turns.
+
+---
+
+## Archived original 2026-10-31 snapshot (preserved unmodified)
+
 # ScientificEvolution — Development State
 
 **Snapshot date:** 2026-10-31. **Development branch:** `dev/research-continuity-v1`.
