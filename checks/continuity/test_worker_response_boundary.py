@@ -135,7 +135,11 @@ class TestRealE2WorkerIntegration(unittest.TestCase):
                 self.assertTrue(any(x['kind']=='TOOL_RECORDED' for x in j._events()))
             else:
                 self.assertEqual(len(tool.requests),0)
-                self.assertEqual(s.work['W_TEST']['outcome'],'BLOCKED')
+                if expected_status == 'FORMAT_REPAIR_PENDING':
+                    self.assertEqual(s.work['W_TEST']['status'],'ACTIVE')
+                    self.assertIsNone(s.work['W_TEST'].get('outcome'))
+                else:
+                    self.assertEqual(s.work['W_TEST']['outcome'],'BLOCKED')
             self.assertFalse(os.environ.get('FAKG_RESEARCH_ALLOW_PAID')=='YES')
 
     def test_identical_repeat_executes_one_tool(self):
@@ -154,7 +158,7 @@ class TestRealE2WorkerIntegration(unittest.TestCase):
                               'arguments':{'action':'search','query':'fixture only',
                                            'provider':'openalex','page':1}}}
         self.run_mock_work(json.dumps(base) + '\n{"scientific_text":"partial"',
-                           'BLOCKED_FORMAT', expected_format_status='INVALID_FORMAT')
+                           'FORMAT_REPAIR_PENDING', expected_format_status='INVALID_FORMAT')
 
     def test_distinct_repeat_never_executes_tool(self):
         base={'scientific_text':'Synthetic only','next_action':'CONTINUE',
@@ -164,7 +168,7 @@ class TestRealE2WorkerIntegration(unittest.TestCase):
                                            'provider':'openalex','page':1}}}
         raw=json.dumps(base)
         self.run_mock_work(raw+'\n'+json.dumps({**base,'next_action':'HOLD'}),
-                           'BLOCKED_FORMAT')
+                           'FORMAT_REPAIR_PENDING')
 
 
 if __name__=='__main__':

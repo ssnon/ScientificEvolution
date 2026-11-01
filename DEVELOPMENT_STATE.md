@@ -11,6 +11,14 @@ The objective is a **general-purpose autonomous pre-experimental AI Scientist**,
 
 **Level II** means a physically defensible, meaningfully novel and falsifiable proposal with concrete predictions distinguishable from strong null mechanisms, credible prior-art comparison, experimental observables/controls and explicit uncertainty. It is not an experimentally verified discovery. Models and tools may assess these conditions, but such assessments are not external certification. A tool failure is not a scientific negative; a local HOLD is not an impossibility theorem for P0.
 
+## M18 native Worker reliability work (2026-11-01)
+
+**Trigger:** First M17 Population research segment (8 paid research calls, +1 Council) delivered 3 Controller decisions but 2 of 2 Worker calls were rejected with `DISTINCT_MULTIPLE_JSON_REJECTED`; both raw responses contained two standalone literature-search tool requests and a third scientific envelope. No Population tool calls, new live assets, or verified science. Council CONTINUE_RESEARCH. Current Population has one ACTIVE, unstarted Work. The independent peer-report bridge was present in all 3 Controller inputs.
+
+**Native implementation to test:** `engine.py` now requests one model-authored format correction *within the same ACTIVE Work* after an invalid Worker response. It saves the raw original, does not auto-select any prior tool/asset, never infers scientific findings from parse failures, and still rejects a second invalid output. A one-step operational correction allowance is not a quota on scientific research. `worker_json.py` strict refusal to choose between distinct authored documents is unchanged.
+
+**Verification status:** IMPLEMENTED when this patch is applied; LIVE_VERIFIED only after a new version-pinned ROOT is executed and inspected. Run no-paid `test_m18_worker_format_recovery.py` and prior Worker/continuity suites before committing. Existing M17 ROOT is not compatible with modified runtime Python bytes and must remain frozen; Git history preserves code revisions but does not retroactively change an immutable execution's source pin.
+
 ## Verified architecture and boundaries
 
 - `runtime/e2core/{core,provider,engine,research_continuity}.py`: provenance-preserving append-only Journal, saved/replay-safe model calls, actual Controller/Work/Worker/tool execution, independent and inherited research context, typed lineage and rejected-proposal continuity.

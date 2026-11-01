@@ -81,6 +81,54 @@ WORKER_PROMPT += ('\nNATIVE RESEARCH CONTINUITY: new_problems may use '
     'Independently test, revise, abandon or ignore it.\n')
 
 
+# M18 — Model-authored correction of an unusable Worker response.
+# Two different scientific documents are NEVER merged or cherry-picked. A
+# malformed multi-document response remains saved exactly as produced. A single
+# additional model call can re-author ONE complete envelope before this Work
+# becomes operationally BLOCKED. This is a serialization policy, not a science
+# step/generation/call quota.
+WORKER_FORMAT_RECOVERY_EXTRA_CALLS = 1
+WORKER_FORMAT_RECOVERY_PROMPT = """
+OPERATIONAL FORMAT CORRECTION FOR THIS SAME WORK (not a new scientific task):
+Your previous WORKER response was saved, but it did NOT execute tools or publish
+scientific assets because it failed the one-JSON-object serialization contract.
+Your own earlier full text and validation status appear in own_prior_steps.
+Return EXACTLY ONE complete JSON dictionary with scientific_text, next_action,
+assets, new_problems, and tool_request. Do not print standalone tool-request
+JSON dictionaries before/after it. If you want several tool actions, select
+and AUTHOR the single most useful next request inside tool_request; after its
+real tool feedback you can choose the next request. Do not claim unexecuted
+requests are observations or that prior malformed proposals were published.
+Preserve or revise your own scientific conclusions using your independent
+judgment; the engine does NOT select or merge your previous competing outputs.
+This correction is your opportunity to make a valid scientific response, not
+an instruction to favor any specific hypothesis or continue unproductively.
+"""
+
+def _consecutive_unusable_worker_responses(j, work):
+    """Count unusable response attempts, including parsed but schema-invalid JSON."""
+    steps = work['steps']
+    i = len(steps) - 1
+    count = 0
+    while i >= 0:
+        step = steps[i]
+        data = json.loads(j.raw(step['raw_blob']))
+        if step['kind'] == 'OUTPUT_VALIDATION' and data.get('status') == 'FORMAT_REPAIR_REQUIRED':
+            # This explicit marker belongs to the preceding authored response,
+            # even when the JSON parsed but required scientific fields were bad.
+            if i < 1 or steps[i-1]['kind'] != 'MODEL_RESPONSE':
+                break
+            count += 1
+            i -= 2
+            continue
+        if step['kind'] == 'MODEL_RESPONSE' and data.get('parse_ok') is False:
+            # Covers interruption after MODEL_RESPONSE but before audit marker.
+            count += 1
+            i -= 1
+            continue
+        break
+    return count
+
 def _simulated(state,planned):
     sim=copy.deepcopy(state)
     for kind,payload in planned:sim.apply(kind,payload)
@@ -427,8 +475,10 @@ class Engine:
         if w['status']!='ACTIVE':return {'work_id':wid,'status':'NOT_ACTIVE'}
         stepnum=len(w['steps'])+1
         call_id='WK_'+wid+'_'+str(stepnum).zfill(5)
+        prior_format_failures=_consecutive_unusable_worker_responses(self.j,w)
         prompt=_worker_input(self.j,wid,'NATIVE_RESEARCH_TOOLS' if self._native_tool_contract else 'CUSTOM_BACKEND_CAPABILITIES_UNDECLARED')
-        text=self.model.call(call_id,'WORKER',wid,WORKER_PROMPT,prompt)
+        worker_system=WORKER_PROMPT+(WORKER_FORMAT_RECOVERY_PROMPT if prior_format_failures else '')
+        text=self.model.call(call_id,'WORKER',wid,worker_system,prompt)
         # Do not select between distinct scientific outputs. Only identical complete
         # JSON repeats may collapse; retain the original authored text in Journal.
         parsed,format_audit=parse_worker_response(text,strict_envelope)
@@ -436,7 +486,17 @@ class Engine:
         self.j.step(wid,'MODEL_RESPONSE',{'call_id':call_id,'text':text,
             'parse_ok':parsed is not None,'format_audit':format_audit})
         if parsed is None or not isinstance(parsed.get('scientific_text'),str) or parsed.get('next_action') not in {'CONTINUE','RETURN','HOLD'}:
-            self.j.finish(wid,'BLOCKED','Model response invalid or truncated; no scientific failure inferred')
+            if prior_format_failures < WORKER_FORMAT_RECOVERY_EXTRA_CALLS:
+                self.j.step(wid,'OUTPUT_VALIDATION',{
+                    'status':'FORMAT_REPAIR_REQUIRED',
+                    'call_id':call_id,
+                    'raw_model_response_preserved':True,
+                    'no_tool_executed_from_invalid_response':True,
+                    'not_a_scientific_disposition':True,
+                    'format_audit':format_audit})
+                return {'work_id':wid,'status':'FORMAT_REPAIR_PENDING',
+                        'model_response_saved':True, 'tool_actions_executed':0}
+            self.j.finish(wid,'BLOCKED','Model response invalid or truncated after one model-authored format correction; no scientific failure inferred')
             return {'work_id':wid,'status':'BLOCKED_FORMAT'}
         with self._lock:
             # Preserve model text first; accept valid scientific assets independently of

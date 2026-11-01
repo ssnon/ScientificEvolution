@@ -85,3 +85,11 @@ Record separately: `IMPLEMENTED` (code exists); `MOCK_VERIFIED` (controlled fixt
 - **Next:** Observe one autonomously selected Population
   research segment before deciding whether native knowledge
   handoff and Worker-output reliability require redesign.
+
+## 2026-11-01 — M17 Population first live run and M18 repair proposal
+
+- **M17 population, real calls:** 8 research calls and one Council call in this segment. Three Controller decisions; two Worker calls; both Worker Work items BLOCKED_FORMAT; one ACTIVE Work with zero steps; no new live assets or executed research tool results. Council CONTINUE_RESEARCH. Cumulative research-root calls 28, meta-root calls 4.
+- **Direct read-only audit:** Both blocked Worker responses were complete three-document sequences: two standalone `literature_research` search requests followed by one valid-looking scientific Worker envelope. The raw text is preserved; no request or scientific claim was executed from these blocked responses. Controller received `independent_peer_syn_portfolio` with SYN_01 (4 decisions, no new assets) and SYN_02 (1 decision, 1 translated provisional asset).
+- **Scientific delta:** NONE established for the Population despite successful structural PEER handoff. The Council considered the imported charge/height/orientation candidate provisional and overlapping historical mechanisms. No inspected new primary source, bounded discriminator, or Level II result was obtained.
+- **Engineering follow-up (M18, source patch pending local regression):** In-place Native Engine change permits exactly one model-authored serialization correction on an ACTIVE Work after a malformed Worker response; all prior raw output retained. No code heuristic chooses among scientific answers or executes any tool from ambiguous output. Normal Worker JSON parser remains fail-closed. After one unsuccessful correction, Work remains operationally BLOCKED rather than counting as scientific evidence. This is not a guarantee that the model will produce correct JSON or research results.
+- **Execution boundary:** M17 Journals and prior source-pinned experiment remain unchanged; Git tracks new Native Engine source for subsequent version-pinned execution.
