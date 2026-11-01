@@ -82,6 +82,8 @@ WORKER_PROMPT += ('\nNATIVE RESEARCH CONTINUITY: new_problems may use '
     'Independently test, revise, abandon or ignore it.\n')
 
 
+WORKER_PROMPT += '\nM21 bounded OA PDF capability: literature_research action read_oa_pdf with DOI\nand 1-based page (e.g. {"action":"read_oa_pdf","doi":"10.xxxx/yyy","page":1})\nresolves DOI through OpenAlex and inspects only URL candidates supplied by its\nOA metadata. It checks a public HTTPS destination, bounded PDF bytes, and a\nconservative article-title match before returning a bounded page text excerpt.\nThe Worker must evaluate source identity, methods and reported observations;\nOA_PDF_TEXT is extracted paper text, NOT independent scientific certification.\nFigures, tables and equations may be incompletely extracted, so do not infer\nan experiment from the extracted page alone. Request additional pages when\nscientifically necessary. If none are safely retrievable, report the access\nlimitation and consider other research; retrieval failure is not evidence of\nscientific absence.\n'
+
 # M19 — Source discovery and source-reading are Worker-autonomous; past
 # executions remain evidence records, not automatically validated science.
 WORKER_PROMPT += ("\nM19 inherited evidence: INFORMED Workers may use "
@@ -819,3 +821,14 @@ class Engine:
           'objective_assessment':(self.j.verify().objective_assessments[-1] if self.j.verify().objective_assessments else None),
           'decisions':status,'new_model_calls':self.model.new_calls,'root':str(self.j.root),
           'scientific_certification':False}
+
+# M21.1 optional broad OA discovery: after OpenAlex candidates fail,
+# read_oa_pdf also checks DOI-matched Semantic Scholar OA metadata. You may
+# optionally specify candidate_url ONLY when it comes from a legitimate public
+# paper/source location you can identify; never invent a URL. The runtime
+# checks HTTPS and pinned public DNS, redirects, PDF magic/size, DOI-resolved
+# paper-title identity and page text even for a supplied URL. A model-proposed
+# URL is not a verified scholarly citation or an empirical result by itself.
+# No source discovery result, retrieval failure, or PDF text automatically
+# certifies scientific novelty, measurements, figure contents or mechanism.
+WORKER_PROMPT += 'M21.1 DOI-based OA discovery includes Semantic Scholar fallback; read_oa_pdf accepts an optional candidate_url from a known, independently justified OA paper location. It is not a citation until the runtime actually retrieves and title-checks the PDF. Do not invent URLs or claim an unsuccessful candidate was read.\n'

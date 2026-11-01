@@ -15,7 +15,7 @@ from .evidence_continuity import inherited_inventory, uninterpreted_last_tool_fe
 
 NATIVE_TOOLS = [
     {'kind':'literature_research','purpose':'Autonomously discover scholarly records and read accessible original evidence',
-     'actions':['search (openalex/europepmc)','resolve (DOI/openalex ID)','abstract (DOI)','read_fulltext (DOI/PMCID)',
+     'actions':['search (openalex/europepmc)','resolve (DOI/openalex ID)','abstract (DOI)','read_fulltext (DOI/PMCID)','read_oa_pdf (DOI, page, optional candidate_url)',
                 'find_evidence (PMCID and phrase)','references','figure_captions',
                 'supplements','supplement_files','data_links','zenodo','read_zenodo_file','read_arxiv_pdf'],
      'evidence_caveat':'Search hits/links are metadata, not experimental evidence. Read the text before making literature-grounded scientific claims.'},

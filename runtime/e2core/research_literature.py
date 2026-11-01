@@ -14,6 +14,7 @@ Evidence tiers:
 """
 from __future__ import annotations
 import datetime, hashlib, io, json, re, ssl, time, urllib.error, urllib.parse, urllib.request, xml.etree.ElementTree as ET
+from .oa_pdf import read_from_openalex_record, public_pdf_get
 
 OA_BASE='https://www.ebi.ac.uk/europepmc/webservices/rest'
 OPENALEX_BASE='https://api.openalex.org/works'
@@ -31,11 +32,13 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
 
 def _network(url):
     u=urllib.parse.urlsplit(url)
-    allowed={'api.openalex.org','www.ebi.ac.uk','arxiv.org','zenodo.org'}
+    allowed={'api.openalex.org','api.semanticscholar.org','www.ebi.ac.uk','arxiv.org','zenodo.org'}
     if u.scheme!='https' or u.hostname not in allowed or u.username or u.password or u.port:
         raise RetrievalError('UNTRUSTED_HOST_OR_PROTOCOL')
     # No arbitrary query destinations; API path is constructed exclusively here.
     if u.hostname=='api.openalex.org' and not u.path.startswith('/works'):raise RetrievalError('BAD_OPENALEX_ENDPOINT')
+    if u.hostname=='api.semanticscholar.org' and not u.path.startswith('/graph/v1/paper/DOI:'):
+        raise RetrievalError('BAD_SEMANTIC_SCHOLAR_ENDPOINT')
     if u.hostname=='www.ebi.ac.uk' and not u.path.startswith('/europepmc/webservices/rest/'):
         raise RetrievalError('BAD_EUROPEPMC_ENDPOINT')
     if u.hostname=='zenodo.org' and not u.path.startswith('/api/records'):
@@ -300,8 +303,61 @@ def _arxiv_pdf(args,fetch):
         'evidence_class':'OA_PDF_TEXT','scientific_certification':False,
         'warning':'PDF text extraction may omit equations, figures and tables; visual examination is required for those.'}
 
+# M21.1: optional second source of DOI-exact OA candidates.
+# Its metadata is NOT empirical evidence and can fail independently of OpenAlex.
+SEMANTIC_BASE = 'https://api.semanticscholar.org/graph/v1/paper/'
+
+
+def _semantic_oa_record(doi, openalex_record, fetch):
+    url = SEMANTIC_BASE + urllib.parse.quote('DOI:'+doi, safe='/:.') + '?fields=title,externalIds,openAccessPdf'
+    response = _jget(fetch, url)
+    ids = response.get('externalIds') or {}
+    if not isinstance(ids, dict) or str(ids.get('DOI', '')).lower() != doi.lower():
+        raise RetrievalError('SEMANTIC_SCHOLAR_DOI_IDENTITY_UNVERIFIED')
+    # DOI match plus bibliographic title agreement precede PDF identity checking.
+    from .oa_pdf import _title_tokens
+    indexed = set(_title_tokens(openalex_record.get('title','')))
+    other = set(_title_tokens(response.get('title','')))
+    if len(indexed) < 5 or len(other) < 5 or len(indexed & other)/len(indexed) < 0.72:
+        raise RetrievalError('SEMANTIC_SCHOLAR_TITLE_MISMATCH')
+    oa = response.get('openAccessPdf') or {}
+    if not isinstance(oa, dict) or not isinstance(oa.get('url'),str) or not oa['url']:
+        raise RetrievalError('SEMANTIC_SCHOLAR_NO_OPEN_PDF')
+    # HTTPS/DNS/redirect check and PDF/title examination happen at fetch time.
+    return {'doi':doi, 'title':openalex_record['title'],
+            'best_oa_pdf_url':oa['url'], 'other_oa_locations':[]}
+
+
+def _oa_pdf(args,fetch):
+    """DOI-exact OpenAlex, then optional Semantic Scholar, plus vetted URL lead."""
+    doi=_arg(args,'doi',DOI_RE)
+    record=_resolve({'doi':doi},fetch)['record']
+    chosen=args.get('candidate_url')
+    if chosen is not None and (not isinstance(chosen,str) or len(chosen)>1600 or not chosen):
+        raise RetrievalError('INVALID_CANDIDATE_URL')
+    request={'doi':doi,'page':args.get('page',1)}
+    if chosen is not None:request['candidate_url']=chosen
+    first=read_from_openalex_record(request,record,fetch)
+    if first['status']=='DELIVERED':return first
+    # Avoid treating a blocked repository as the absence of the paper.
+    fallback_notes=[]
+    try:
+        second_record=_semantic_oa_record(doi,record,fetch)
+        second=read_from_openalex_record({'doi':doi,'page':args.get('page',1)},second_record,fetch)
+        if second['status']=='DELIVERED':
+            second['candidate_provenance']='DOI_MATCHED_SEMANTIC_SCHOLAR_METADATA'
+            second['openalex_candidate_failures']=first.get('candidate_attempts',[])
+            return second
+        fallback_notes.append({'provider':'semanticscholar','result':'NO_IDENTITY_MATCHED_PDF',
+                              'candidate_attempts':second.get('candidate_attempts',[])})
+    except (RetrievalError,OSError,ValueError,UnicodeDecodeError,TypeError,KeyError, json.JSONDecodeError) as exc:
+        fallback_notes.append({'provider':'semanticscholar','result':'DISCOVERY_UNAVAILABLE_OR_UNVERIFIED',
+                              'reason':type(exc).__name__+':'+str(exc)[:95]})
+    first['additional_discovery_attempts']=fallback_notes
+    return first
+
 ACTIONS={'search':_search,'resolve':_resolve,'abstract':_abstract,'read_fulltext':_fulltext,'find_evidence':_find_evidence,
-         'references':_refs,'figure_captions':_figures,'supplements':_supplements,'data_links':_datasets,'read_arxiv_pdf':_arxiv_pdf}
+         'references':_refs,'figure_captions':_figures,'supplements':_supplements,'data_links':_datasets,'read_arxiv_pdf':_arxiv_pdf,'read_oa_pdf':_oa_pdf}
 
 # Provider failures are infrastructure observations, not scientific negatives.
 # Keep retry bounds operational; these do not constrain autonomous science.
@@ -333,6 +389,7 @@ def _retrieval_session(fetch,*,sleeper=None):
         hostname=urllib.parse.urlsplit(url).hostname
         provider=('europepmc' if hostname=='www.ebi.ac.uk' else
                   'openalex' if hostname=='api.openalex.org' else
+                  'semanticscholar' if hostname=='api.semanticscholar.org' else
                   'zenodo' if hostname=='zenodo.org' else
                   'arxiv' if hostname=='arxiv.org' else 'unknown')
         retryable=provider=='europepmc'
@@ -376,7 +433,18 @@ def research_literature(args,*,transport=None,sleeper=None):
     if not isinstance(args,dict):return {'status':'REJECTED','error_code':'INVALID_RESEARCH_ARGUMENTS'}
     action=args.get('action')
     if action not in ACTIONS:return {'status':'REJECTED','error_code':'UNSUPPORTED_RESEARCH_ACTION'}
-    retrieve,trace=_retrieval_session(transport or _network,sleeper=sleeper)
+    # Only for DOI-resolved OA candidates. Other research actions retain
+    # their original fixed API host allowlist and behavior. Test transport can
+    # inject a fully fake network with no requests to real hosts.
+    if action=='read_oa_pdf' and transport is None:
+        def _oa_router(url):
+            if url.startswith(OPENALEX_BASE+'/') or url.startswith(SEMANTIC_BASE+'DOI:'):
+                return _network(url)
+            return public_pdf_get(url)
+        routed_transport=_oa_router
+    else:
+        routed_transport=transport or _network
+    retrieve,trace=_retrieval_session(routed_transport,sleeper=sleeper)
     try:
         try:
             out=ACTIONS[action](args,retrieve)
