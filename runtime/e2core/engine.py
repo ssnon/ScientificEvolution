@@ -353,6 +353,93 @@ def _m23_worker_publication_source_contract(s,w):
           'list rather than inventing an ID, and state evidence limitations. '
           'FRESH cannot inherit historical AI context.')}
 
+# M231_CURRENT_ROOT_WORK_SOURCE_SCOPE_V1
+# This is a planning affordance, not a source import, science decision, or
+# eligibility relaxation. The actual State.apply validator remains authoritative.
+def _m231_controller_work_source_contract(j,s):
+    """Expose source IDs in the exact current Journal, without synthetic aliases.
+
+    Asset records already expose their current-root source_ids. List every
+    remaining Source ID and all external audit IDs explicitly. This yields a
+    complete registered namespace without duplicating hundreds of asset links.
+    """
+    asset_linked={sid for a in s.assets.values() for sid in a.get('source_ids',[])}
+    non_asset=sorted(sid for sid in s.sources if sid not in asset_linked)
+    external=sorted(sid for sid,src in s.sources.items()
+                    if src.get('kind')=='EXTERNAL_AUDIT')
+    primary=sorted(sid for sid,src in s.sources.items()
+                   if src.get('kind')=='PRIMARY')
+    # All registries are verified by j.verify(), including Blob integrity.
+    return {
+        'scope':'CURRENT_ROOT_ONLY',
+        'registered_source_count':len(s.sources),
+        'registered_source_ids_not_attached_to_assets':non_asset,
+        'registered_external_audit_source_ids':external,
+        'registered_primary_source_ids':primary,
+        'remaining_registered_sources':'Listed exactly in assets[].source_ids',
+        'allow_informed_work_source_ids':'ONLY currently registered IDs',
+        'allow_fresh_work_source_ids':'ONLY registered PRIMARY IDs',
+        'source_lookup_is_not_source_creation':True,
+        'no_implicit_source_import':True,
+        'instruction':('For actions[].work.source_ids use ONLY literal IDs '
+            'in this CURRENT ROOT: assets[].source_ids plus '
+            'registered_source_ids_not_attached_to_assets. All external '
+            'audit names are additionally enumerated. Never manufacture '
+            'SRC_INHERITED_TOOL_ from an Asset ID, upstream blob hash, peer '
+            'identifier, scientific narrative, or source suffix. If the '
+            'intended source is NOT registered in the current root, do NOT '
+            'cite that ID or assert the evidence was obtained; consider an '
+            'independently justified new retrieval/verification Work and '
+            'state the limitation. An INFORMED Work may have an empty '
+            'source_ids list if its pinned parent Assets already carry the '
+            'usable provenance, or if its purpose is to obtain new evidence. '
+            'FRESH Work may declare only registered PRIMARY sources and '
+            'must never inherit AI results. Source registration, access, '
+            'publication, and scientific certification are distinct.')}
+
+
+def _m231_rejected_work_source_diagnostic(j,s):
+    """Inspect last saved rejected proposal; preserve the authored JSON intact."""
+    from .provider import content_from_wire,strict_envelope
+    for row in reversed(j._events()):
+        if row.get('kind')!='OPERATIONAL_PAUSE':
+            continue
+        payload=row['payload']
+        if payload.get('reason')!='CONTROLLER_PLAN_REJECTED:UNKNOWN_WORK_SOURCES':
+            continue
+        cid=payload.get('call_id')
+        prior=s.model_calls.get(cid,{})
+        if prior.get('state')!='SAVED':
+            continue
+        obj=strict_envelope(content_from_wire(j.raw(prior['response_blob'])))
+        if not isinstance(obj,dict):
+            continue
+        details=[]
+        for i,action in enumerate(obj.get('actions',[])):
+            if not isinstance(action,dict) or not isinstance(action.get('work'),dict):
+                continue
+            sources=action['work'].get('source_ids',[])
+            if not isinstance(sources,list):
+                details.append({'action_index':i, 'wrong_source_ids_type':True})
+                continue
+            unknown=[sid for sid in sources if not isinstance(sid,str) or sid not in s.sources]
+            if unknown:
+                details.append({'action_index':i,
+                    'original_work_id':action['work'].get('id'),
+                    'unknown_current_root_source_ids':unknown,
+                    'all_other_ids_must_also_pass_existing_validation':True})
+        return {'prior_rejected_call_id':cid,'original_response_preserved':True,
+                'not_scientific_negative':True,
+                'not_authorized_to_rewrite_or_autocorrect':True,
+                'diagnostics':details,
+                'instructions':('The unknown Source IDs are demonstrably not '
+                    'registered in this Journal. Independently reconsider '
+                    'the science and author a fresh plan. Do not retry the '
+                    'same fabricated Source IDs, do not silently replace '
+                    'them with other claims, and do not create phantom Source '
+                    'records. A rejected plan is not a committed Work.')}
+    return None
+
 def controller_plan(j:EvolutionJournal, raw_obj:dict, call_id:str,decision_id:str):
     """Validate a model-authored proposal in memory, without partial commits."""
     s=j.verify();guard(isinstance(raw_obj,dict),'CONTROLLER_NOT_OBJECT')
@@ -575,6 +662,10 @@ def _external_context(j, tool_capabilities=None):
     if opportunity_index:
         context['unregistered_opportunity_index']=concise_index(opportunity_index)
     context['m23_root_scoped_asset_namespace']=_m23_namespace_context(j,s)
+    context['m231_current_root_work_source_contract']=_m231_controller_work_source_contract(j,s)
+    diagnostic=_m231_rejected_work_source_diagnostic(j,s)
+    if diagnostic is not None:
+        context['m231_prior_unknown_work_source_rejection']=diagnostic
     return context
 
 def _worker_input(j,wid,tool_capabilities=None):

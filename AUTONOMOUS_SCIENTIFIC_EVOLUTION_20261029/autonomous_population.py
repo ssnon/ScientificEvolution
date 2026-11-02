@@ -128,6 +128,39 @@ def root_view(mods,root):
                    'registered_primary':registered_primary_sources(s)},
         'saved_external_calls':pp.paid_calls(s),'program_reviews_total':len(s.program_reviews)}
 
+# M231_COUNCIL_EXECUTION_SCOPE_V1
+# PEER historical ACTIVE research is a scientific opportunity, never a
+# runnable Work in the current POPULATION Journal.
+def _m231_execution_scope(context, stage):
+    root=context.get('current_research') or {}
+    works=root.get('works',[])
+    if not isinstance(works,list):
+        raise RuntimeError('M231_CURRENT_WORK_LIST_MALFORMED')
+    active=[w['id'] for w in works if w.get('status') in ('ACTIVE','QUEUED')]
+    peers=[]
+    if stage=='POPULATION':
+        for p in context.get('independent_peers',[]):
+            peer_works=(p.get('research') or {}).get('works',[])
+            peers.append({'peer_name':p['name'],
+                'historical_active_or_queued_work_ids':[
+                    w['id'] for w in peer_works if w.get('status') in ('ACTIVE','QUEUED')],
+                'these_work_ids_are_not_executable_in_current_population':True})
+    return {'current_root':root.get('root'),
+            'current_root_work_count':len(works),
+            'currently_executable_work_ids':active,
+            'peer_work_status_history_not_active_here':peers,
+            'science_not_prejudged':True,
+            'instructions':('Only currently_executable_work_ids are runnable '
+                'in THIS root. PEER ACTIVE/QUEUED entries remain historically '
+                'unresolved, NOT currently executing Population Work. Their '
+                'scientific information value may justify CONTINUE_RESEARCH, '
+                'but only a valid new CURRENT ROOT Controller action can '
+                'actually create the continuation Work. Never assert such '
+                'a Work is already active in Population when none exists. '
+                'If the root has no Work and cannot register a valid one, '
+                'that is an operational execution problem, not a scientific '
+                'HOLD, and no conclusion about P0 follows.')}
+
 def snapshot(mods,experiment,cycle,stage,peer=None):
     base=cycle['base'];cbase=root_view(mods,base)
     context={'original_p0_sha256':pop.p0hash(mods.J(base).verify()),
@@ -160,6 +193,7 @@ def snapshot(mods,experiment,cycle,stage,peer=None):
         # only after independent peer research has pooled.
         pj=mods.J(cycle['population_root'])
         context['inherited_evidence_planning_brief']=inherited_planning_brief(pj,pj.verify(),'INFORMED')
+    context['m231_current_execution_scope']=_m231_execution_scope(context,stage)
     return context
 
 def meta_path(experiment):return Path(experiment)/'AUTONOMOUS_META'
