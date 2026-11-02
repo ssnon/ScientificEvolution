@@ -3,6 +3,7 @@ from __future__ import annotations
 import os, json, urllib.request, threading
 from .core import EvolutionJournal, EvidenceError, canon, guard, sha
 from .research_continuity import opportunities_for_journal, concise_index
+from .m232_budget import reserve_call, settle_call
 
 API_URL='https://openrouter.ai/api/v1/chat/completions'
 MAX_PROVIDER_RESPONSE=4_000_000
@@ -76,6 +77,7 @@ class DurableModel:
                 return content_from_wire(self.j.raw(previous['response_blob']))
             guard(self.approved and os.environ.get('FAKG_RESEARCH_ALLOW_PAID')=='YES','PAID_EXECUTION_NOT_EXPLICITLY_APPROVED')
             guard(self.max_new_calls is None or self.new_calls<self.max_new_calls,'OPERATIONAL_CALL_BUDGET_REACHED')
+            reservation=reserve_call(self.j.root,ident,wire,self.model,self.max_tokens,self.mode)
             self.new_calls+=1
             self.j.append('MODEL_CALL_INTENT',{'id':ident,'actor':actor,'work_id':work_id,'request_blob':self.j.blob(wire),
                 'model':self.model,'billing_mode':self.mode})
@@ -90,4 +92,5 @@ class DurableModel:
             usage=json.loads(raw).get('usage')
         except (ValueError,TypeError,AttributeError):usage=None
         self.j.append('MODEL_CALL_SAVED',{'id':ident,'response_blob':self.j.blob(raw),'usage':usage})
+        settle_call(reservation,usage)
         return content_from_wire(raw)

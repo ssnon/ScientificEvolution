@@ -19,6 +19,7 @@ from e2core.engine import (Engine, CONTROLLER_PROMPT, E3R1_CONTROLLER_ADDENDUM,
                            _external_context, controller_plan)
 import e2core.engine as e2_engine
 from e2core.provider import strict_envelope
+from e2core.m232_context import build_impact_context
 from science_frontier_campaign import OPPORTUNITY_PROMPT, validate_opp
 from e2core.long_campaign import drive as base_drive, locked_sources
 
@@ -616,20 +617,26 @@ def feedback_controller(self, ident):
         return {'status':'INVALID_NOVELTY_ADVISOR_JSON'}
     novelty=validate_novelty(novelty_obj,{c['id'] for c in claims},evidence)
     science_delta=prior_art_delta(prior_state,novelty)
-    impact_input={'program':base['program'],'current_problems':base['problems'],
-           'novelty':novelty,'evidence':evidence, 'original_p0_unchanged':True,
-           'prior_working_problem_state':prior_state, 'prior_art_delta':science_delta}
+    scoped_state=j.verify()
+    impact_input=build_impact_context(
+        program=base['program'],problems=base['problems'],novelty=novelty,
+        evidence=evidence,prior_state=prior_state,prior_art_delta=science_delta,
+        focus_problem_ids=[scoped_state.assets[c['id']].get('problem_id')
+                           for c in claims if c['id'] in scoped_state.assets],
+        active_problem_ids=[w.get('problem_id') for w in scoped_state.work.values()
+                            if w.get('status') in {'QUEUED','ACTIVE'}])
     impact_id=_call_id('PMI',impact_input)
     impact_obj=strict_envelope(self.model.call(impact_id,'CONTROLLER',None,IMPACT_PROMPT,impact_input))
     if impact_obj is None:
         j.append('OPERATIONAL_PAUSE',{'reason':'INVALID_PROBLEM_IMPACT_JSON','call_id':impact_id})
         return {'status':'INVALID_PROBLEM_IMPACT_JSON'}
-    try:impact=validate_impact(impact_obj,{c['id'] for c in claims},novelty,evidence,prior_working_problem_state=prior_state)
+    try:impact=validate_impact(impact_obj,{c['id'] for c in claims},novelty,impact_input['evidence'],prior_working_problem_state=prior_state)
     except EvidenceError as exc:
         j.append('OPERATIONAL_PAUSE',{'reason':'REJECTED_PROBLEM_IMPACT:'+str(exc),'call_id':impact_id})
         return {'status':'REJECTED_PROBLEM_IMPACT','detail':str(exc)}
     p0_delta=problem_impact_delta(prior_state,impact,science_delta)
     augmented={**base,'claim_prior_art_assessment':novelty,'problem_level_impact':impact,
+       'm232_impact_context_scope':impact_input['context_scope'],
        'working_problem_state_before_decision':prior_state,'prior_art_delta':science_delta,
        'problem_impact_delta':p0_delta,
        'feedback_call_provenance':{'novelty_model_call':novelty_id,'problem_impact_model_call':impact_id,

@@ -49,12 +49,24 @@ class V3ContractTests(unittest.TestCase):
     with self.assertRaisesRegex(EvidenceError,'FORK_INVALID_PATH_OR_ALREADY_EXISTS'):
      v3.fork(a,b)
  def test_historical_source_guard_remains_enforced(self):
-  # Native development sources must not impersonate pinned V3 sources.
-  with self.assertRaisesRegex(
-      EvidenceError,
-      'UNVERIFIED_EXECUTION_SOURCE_VERSION:e2core/core.py'
-  ):
+  # Historical V3 pins remain immutable. Report the first actual mismatch.
+  with self.assertRaises(EvidenceError) as caught:
    v3.source_code_guard()
+
+  message = str(caught.exception)
+  prefix = 'UNVERIFIED_EXECUTION_SOURCE_VERSION:'
+  self.assertTrue(message.startswith(prefix), message)
+
+  key = message[len(prefix):]
+  self.assertIn(key, v3.PINNED_SOURCE_HASHES)
+
+  runtime = Path(__file__).resolve().parents[2] / 'runtime'
+  actual = runtime / key
+  self.assertTrue(actual.is_file(), key)
+  self.assertNotEqual(
+      v3.sha(actual.read_bytes()),
+      v3.PINNED_SOURCE_HASHES[key]
+  )
 
  def test_unresolved_additional_call_fails_closed(self):
   with tempfile.TemporaryDirectory() as tmp:
