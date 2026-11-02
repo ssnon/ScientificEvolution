@@ -4,6 +4,7 @@ import os, json, urllib.request, threading
 from .core import EvolutionJournal, EvidenceError, canon, guard, sha
 from .research_continuity import opportunities_for_journal, concise_index
 from .m232_budget import reserve_call, settle_call
+from .m232_cache_policy import selected_cache_fields
 
 API_URL='https://openrouter.ai/api/v1/chat/completions'
 MAX_PROVIDER_RESPONSE=4_000_000
@@ -66,9 +67,12 @@ class DurableModel:
                 idx=opportunities_for_journal(self.j)
                 if idx and 'unregistered_opportunity_index' not in payload:
                     payload={**payload,'unregistered_opportunity_index':concise_index(idx)}
-        wire=canon({'model':self.model,'temperature':0.7,'max_tokens':self.max_tokens,
+        # Add only an opt-in provider cache control; do not alter science inputs.
+        wire_fields={'model':self.model,'temperature':0.7,'max_tokens':self.max_tokens,
             'response_format':{'type':'json_object'},'messages':[{'role':'system','content':system},
-              {'role':'user','content':json.dumps(payload,ensure_ascii=False,sort_keys=True,allow_nan=False)}]})
+              {'role':'user','content':json.dumps(payload,ensure_ascii=False,sort_keys=True,allow_nan=False)}]}
+        wire_fields.update(selected_cache_fields(self.j,ident,actor,work_id,self.model))
+        wire=canon(wire_fields)
         with self.lock:
             previous=self.j.verify().model_calls.get(ident)
             if previous:
