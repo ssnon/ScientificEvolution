@@ -16,6 +16,9 @@ from .m232_ondemand import DetailSession, DetailProtocolError, PROTOCOL
 from .m232_partb import MARKER
 from .m232_namespace import (COMPACT, verify_mode, compact_payload,
     full_after_request)
+from .m233_model_metadata import (SEPARATE, verify_metadata_mode,
+    compact_presentation_metadata)
+from .m233_reference_diagnostics import WORK_REFERENCE_ADDENDUM
 
 ENV = 'M232_CONTROLLER_DETAIL_MODE'
 FULL = 'FULL'
@@ -65,6 +68,7 @@ def selected_mode(j, model):
         if older != mode:
             raise EvidenceError('M232_CONTROLLER_DETAIL_MODE_DRIFT')
     verify_mode(j, mode)
+    verify_metadata_mode(j, mode)
     return mode
 
 
@@ -88,6 +92,7 @@ def assessor_call(model, j, ident, prompt, full_context, stage, *, mode):
     except (DetailProtocolError, ValueError, KeyError) as exc:
         raise EvidenceError('M232_CONTEXT_PREPARATION_FAILED:' + str(exc)) from exc
     namespace_mode = verify_mode(j, mode)
+    metadata_mode = verify_metadata_mode(j, mode)
     registered_sources = (set(j.verify().sources) if namespace_mode == COMPACT else None)
     full_namespace_requested = False
     round_no = 0
@@ -111,6 +116,17 @@ def assessor_call(model, j, ident, prompt, full_context, stage, *, mode):
                 payload = full_after_request(payload)
             else:
                 payload = compact_payload(payload, registered_sources)
+        # Original full/index rows and their per-record SHA are retained
+        # unchanged inside the validated DetailSession and Journal.
+        if metadata_mode == SEPARATE:
+            payload = compact_presentation_metadata(payload)
+        metadata_advisory = (
+            "\nM23.3 indexed-record marker: m233_indexed=true explicitly "
+            "marks an abridged Asset/Problem entry; original index hashes "
+            "are retained by the independent read-only verifier. "
+            "Request details rather than treating missing fields as "
+            "scientific negative evidence.\n"
+            if metadata_mode == SEPARATE else "")
         namespace_advisory = (
             "\nM23.2 canonical-only namespace view: all visible Asset IDs are "
             "current-root canonical IDs. The detailed historical alias "
@@ -119,7 +135,8 @@ def assessor_call(model, j, ident, prompt, full_context, stage, *, mode):
             "not indicate absent historical evidence.\n"
             if namespace_mode == COMPACT else "")
         text = model.call(current_id, 'CONTROLLER', None,
-                          prompt + ADDENDUM + namespace_advisory, payload)
+                          prompt + ADDENDUM + namespace_advisory
+                          + WORK_REFERENCE_ADDENDUM + metadata_advisory, payload)
         obj = strict_envelope(text)
         if obj is None:
             raise EvidenceError('M232_ADAPTIVE_MODEL_INVALID_JSON_SAVED_NO_AUTO_RETRY')

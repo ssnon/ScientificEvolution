@@ -12,6 +12,7 @@ from types import SimpleNamespace
 from e2core.core import EvolutionJournal, EvidenceError, guard, canon, sha
 from e2core.engine import Engine, _external_context, controller_plan, CONTROLLER_PROMPT, E3R1_CONTROLLER_ADDENDUM
 from e2core.provider import strict_envelope, content_from_wire, DurableModel
+from e2core.m233_reference_diagnostics import annotate_rejected_work_reference
 import e2core.engine as e2_engine
 import scientific_problem_evolution as spe
 from e2core.m232_context import build_impact_context
@@ -368,9 +369,9 @@ def controller_v3(self,ident):
         return {'status':'CONTROLLER_INVALID_JSON'}
     try:planned=controller_plan(j,control,m232_final_controller_call_id,ident)
     except (EvidenceError,KeyError,TypeError,ValueError) as exc:
-        j.append('OPERATIONAL_PAUSE',{'reason':'CONTROLLER_PLAN_REJECTED:'+str(exc)[:95],
-                    'call_id':m232_final_controller_call_id})
-        return {'status':'CONTROLLER_PLAN_REJECTED','detail':str(exc)}
+        j.append('OPERATIONAL_PAUSE',annotate_rejected_work_reference(j, control, str(exc), {'reason':'CONTROLLER_PLAN_REJECTED:'+str(exc)[:95],
+                    'call_id':m232_final_controller_call_id}))
+        return annotate_rejected_work_reference(j, control, str(exc), {'status':'CONTROLLER_PLAN_REJECTED','detail':str(exc)})
     j.append('CONTROLLER_DECISION',{'id':ident,'call_id':m232_final_controller_call_id,
        'parsed_blob':j.blob(control),'rationale':control['rationale']})
     for kind,p in planned:j.append(kind,p)
