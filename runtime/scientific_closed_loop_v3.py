@@ -14,6 +14,7 @@ from e2core.engine import Engine, _external_context, controller_plan, CONTROLLER
 from e2core.provider import strict_envelope, content_from_wire, DurableModel
 import e2core.engine as e2_engine
 import scientific_problem_evolution as spe
+from e2core.m232_context import build_impact_context
 
 RECEIPT='EXPLICIT_OPERATOR_UNKNOWN_OUTCOME_REISSUE_IN_SEPARATE_FORK_V1'
 FORK_RECEIPT='V3_FORK_FROM_RECOVERED_SCIENTIFIC_EVOLUTION_READONLY_SOURCE'
@@ -214,8 +215,53 @@ def _work_options(j):
        'research_selection_independently_decided_by_controller':True}
 
 
+# M232 SYN PMI bridge (opt-in, no changes to historical V3 source hashes).
+# Both modes record exact request blobs in the ordinary durable Journal.
+def _m232_syn_pmi_mode(j):
+    mode=os.environ.get('M232_SYN_PMI_MODE','FULL')
+    if mode not in {'FULL','SCOPED'}:
+        raise EvidenceError('M232_SYN_PMI_INVALID_MODE')
+    # Never mix the modes within one Journal; a mid-run mode switch would
+    # undermine reproducibility even if the scientific fingerprint is unchanged.
+    for cid,call in j.verify().model_calls.items():
+        if not cid.startswith('PMI_'):
+            continue
+        try:
+            wire=json.loads(j.raw(call['request_blob']))
+            payload=json.loads(next(x['content'] for x in wire['messages']
+                                    if x.get('role')=='user'))
+            prior_mode=('SCOPED' if
+                (payload.get('context_scope') or {}).get('protocol') ==
+                'M232_PMI_SCIENTIFICALLY_CONSERVATIVE_SCOPED_EVIDENCE_V1'
+                else 'FULL')
+        except (ValueError,KeyError,TypeError,StopIteration):
+            raise EvidenceError('M232_SYN_PMI_OLD_REQUEST_UNREADABLE')
+        if prior_mode!=mode:
+            raise EvidenceError('M232_SYN_PMI_MODE_DRIFT_IN_CURRENT_ROOT')
+    return mode
+
+
+def _m232_syn_impact_input(j,base,novelty,evidence,state,delta,claims,mode):
+    full={'program':base['program'],'current_problems':base['problems'],
+          'novelty':novelty,'evidence':evidence,'original_p0_unchanged':True,
+          'prior_working_problem_state':state,'prior_art_delta':delta}
+    if mode=='FULL':
+        return full  # byte-for-byte identical legacy input fields
+    current=j.verify()
+    focus=[current.assets[c['id']].get('problem_id') for c in claims
+           if c['id'] in current.assets]
+    active=[w.get('problem_id') for w in current.work.values()
+            if w.get('status') in {'QUEUED','ACTIVE'}]
+    projected=build_impact_context(
+        program=base['program'],problems=base['problems'],novelty=novelty,
+        evidence=evidence,prior_state=state,prior_art_delta=delta,
+        focus_problem_ids=focus,active_problem_ids=active)
+    return projected
+
+
 def controller_v3(self,ident):
     j=self.j
+    m232_syn_pmi_mode=_m232_syn_pmi_mode(j)
     base=_external_context(j,'NATIVE_RESEARCH_TOOLS' if self._native_tool_contract else 'CUSTOM_BACKEND_CAPABILITIES_UNDECLARED')
     evidence=spe.classified_evidence(j);claims=spe.target_claims(base,j)
     state=spe.working_problem_state(j)
@@ -261,16 +307,15 @@ def controller_v3(self,ident):
             return {'status':'INVALID_NOVELTY_ADVISOR_JSON'}
         novelty=spe.validate_novelty(novelty_obj,{c['id'] for c in claims},evidence)
         science_delta=spe.prior_art_delta(state,novelty)
-        impact_input={'program':base['program'],'current_problems':base['problems'],
-                      'novelty':novelty,'evidence':evidence,'original_p0_unchanged':True,
-                      'prior_working_problem_state':state,'prior_art_delta':science_delta}
+        impact_input=_m232_syn_impact_input(j,base,novelty,evidence,state,
+            science_delta,claims,m232_syn_pmi_mode)
         impact_id=spe._call_id('PMI',impact_input)
         impact_obj=strict_envelope(self.model.call(impact_id,'CONTROLLER',None,spe.IMPACT_PROMPT,impact_input))
         if impact_obj is None:
             j.append('OPERATIONAL_PAUSE',{'reason':'INVALID_PROBLEM_IMPACT_JSON','call_id':impact_id})
             return {'status':'INVALID_PROBLEM_IMPACT_JSON'}
-        try:impact=spe.validate_impact(impact_obj,{c['id'] for c in claims},novelty,evidence,
-                                      prior_working_problem_state=state)
+        try:impact=spe.validate_impact(impact_obj,{c['id'] for c in claims},novelty,
+                                      impact_input['evidence'],prior_working_problem_state=state)
         except EvidenceError as exc:
             j.append('OPERATIONAL_PAUSE',{'reason':'REJECTED_PROBLEM_IMPACT:'+str(exc),'call_id':impact_id})
             return {'status':'REJECTED_PROBLEM_IMPACT','detail':str(exc)}
@@ -285,6 +330,12 @@ def controller_v3(self,ident):
           'problem_impact_model_call':impact_id,
           'not_source_verified':True,'source_materials':[x['evidence_id'] for x in evidence],
           'assessment_reused':reused}}
+    # Scoped science-input receipt is advisory provenance, never certification.
+    # FULL mode remains identical in its request schema to the original V3.
+    if not reused and 'context_scope' in impact_input:
+        augmented['m232_impact_context_scope']=impact_input['context_scope']
+    elif reused and prior and prior.get('m232_impact_context_scope'):
+        augmented['m232_impact_context_scope']=prior['m232_impact_context_scope']
     # Independent Opportunity Assessor remains a model advisory. Only call it
     # when scientific inputs or portfolio situation have genuinely changed.
     prior_actions=prior.get('v3_science_work_options') if prior else None
