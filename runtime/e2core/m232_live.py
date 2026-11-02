@@ -14,6 +14,8 @@ from .core import EvidenceError
 from .provider import strict_envelope
 from .m232_ondemand import DetailSession, DetailProtocolError, PROTOCOL
 from .m232_partb import MARKER
+from .m232_namespace import (COMPACT, verify_mode, compact_payload,
+    full_after_request)
 
 ENV = 'M232_CONTROLLER_DETAIL_MODE'
 FULL = 'FULL'
@@ -62,6 +64,7 @@ def selected_mode(j, model):
             raise EvidenceError('M232_UNREADABLE_PREVIOUS_CONTROLLER_REQUEST') from exc
         if older != mode:
             raise EvidenceError('M232_CONTROLLER_DETAIL_MODE_DRIFT')
+    verify_mode(j, mode)
     return mode
 
 
@@ -84,6 +87,9 @@ def assessor_call(model, j, ident, prompt, full_context, stage, *, mode):
             raise EvidenceError('M232_CONTEXT_ROUNDTRIP_FAILED')
     except (DetailProtocolError, ValueError, KeyError) as exc:
         raise EvidenceError('M232_CONTEXT_PREPARATION_FAILED:' + str(exc)) from exc
+    namespace_mode = verify_mode(j, mode)
+    registered_sources = (set(j.verify().sources) if namespace_mode == COMPACT else None)
+    full_namespace_requested = False
     round_no = 0
     current_id = ident
     while True:
@@ -100,8 +106,20 @@ def assessor_call(model, j, ident, prompt, full_context, stage, *, mode):
             'round': round_no,
             'initial_full_context_sha256': session.status()['full_context_sha256'],
         }
+        if namespace_mode == COMPACT:
+            if full_namespace_requested:
+                payload = full_after_request(payload)
+            else:
+                payload = compact_payload(payload, registered_sources)
+        namespace_advisory = (
+            "\nM23.2 canonical-only namespace view: all visible Asset IDs are "
+            "current-root canonical IDs. The detailed historical alias "
+            "map is available through REQUEST_FULL_CONTEXT, which also "
+            "restores all indexed scientific details. Missing aliases do "
+            "not indicate absent historical evidence.\n"
+            if namespace_mode == COMPACT else "")
         text = model.call(current_id, 'CONTROLLER', None,
-                          prompt + ADDENDUM, payload)
+                          prompt + ADDENDUM + namespace_advisory, payload)
         obj = strict_envelope(text)
         if obj is None:
             raise EvidenceError('M232_ADAPTIVE_MODEL_INVALID_JSON_SAVED_NO_AUTO_RETRY')
@@ -114,6 +132,8 @@ def assessor_call(model, j, ident, prompt, full_context, stage, *, mode):
             return text, current_id, trace
         if result['status'] != 'DETAILS_EXPANDED_NO_PAID':
             raise EvidenceError('M232_UNHANDLED_DETAIL_PROTOCOL_RESULT')
+        if namespace_mode == COMPACT and obj.get('m232_action') == 'REQUEST_FULL_CONTEXT':
+            full_namespace_requested = True
         # Never reuse a prior model ID for a different wire payload. The old
         # request/response stay in the source Journal, even after crashes.
         round_no += 1
