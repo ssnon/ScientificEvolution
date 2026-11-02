@@ -11,7 +11,7 @@ class M232ContextTests(unittest.TestCase):
         problems=[{'id':'P0','status':'OPEN','parents':[],'question':'Original P0 full'},
                   {'id':'P1','parents':['P0'],'status':'OPEN','question':'relevant issue'},
                   {'id':'P2','parents':['P0'],'status':'OPEN','question':'unrelated issue'}]
-        novelty={'claim_assessments':[{'asset_id':'A1','evidence_ids':['SRC_A']}]} 
+        novelty={'claim_assessments':[{'asset_id':'A1','evidence_ids':['SRC_A']}]}
         obj = build_impact_context(program={'problem':'Original P0 full','criteria':'Level II'},
              problems=problems,novelty=novelty,evidence=evidence,prior_state={'current_claim_assessments':{}},
              prior_art_delta={},focus_problem_ids=['P1'])
