@@ -1,3 +1,46 @@
+<!-- CURRENT_STATE_2026_11_02_M231 -->
+# ScientificEvolution — Current Development State
+
+**Snapshot:** 2026-11-02 (KST); operator-reported local WSL branch `dev/m23-1-population-source-scope`, commit `6b663adfd81494a1b9b0105fea9fa6095a2709e8` (M23.1 Native source). This state is based on user-shared, read-only Journal audits, execution logs, and regression output. The original private Journals have **not** been published to GitHub. The latest accessible remote `dev/m22-peer-rejected-continuity` documentation still described M20 when this summary was prepared. Local commit existence does **not** imply it has been pushed.
+
+**Mission:** The product is a **general-purpose autonomous AI Scientist**, not FAKG, knowledge graphs, or a SERS-specific workflow. A human provides original P0; independent researchers generate, critique, measure, calculate, and revise; a population decides how to synthesize, continue, branch, defer, or terminate. SERS is a proving ground. See [PROJECT_VISION.md](PROJECT_VISION.md). A Level II result is a *review-worthy, physically defensible, falsifiable pre-experimental hypothesis*, not an experimentally established mechanism.
+
+## Current verified operational checkpoint — M23.1
+
+- **Local source:** `~/ScientificEvolution_M23_1`, branch `dev/m23-1-population-source-scope`, source commit `6b663adfd81494a1b9b0105fea9fa6095a2709e8`. The operator reported a clean Git worktree after this commit.
+- **New source-pinned experiment:** `~/ScientificEvolution_runs/M23_1_FROM_M23_RECOVERY_POPULATION_20261102_01`; new `BASE_000` bootstrapped from the previous M23 Recovery `CYCLE_000/POPULATION` root. The bootstrap carried **519 provisional/historical assets**. `P0_unchanged: true`; `cycles_created: 0`; no new paid calls; both persistent and autonomous preflight succeeded.
+- **M23.1 change:** `runtime/e2core/engine.py` now exposes the exact *current-root* registered source namespace to the Controller and diagnoses unknown IDs from previously rejected, SAVED Controller plans. `autonomous_population.py` explicitly distinguishes *current-root executable Work* from peer-root historical ACTIVE/QUEUED Work in Council context. The hard `UNKNOWN_WORK_SOURCES` validator, Source provenance, FRESH isolation, and prior Journals are not relaxed or rewritten.
+- **No-paid verification:** `M231_NO_PAID_TESTS_PASS`; read-only regression recognized all four historical rejected Controller attempts and the actual invalid Source IDs, with no fabricated Work or Source record. The regression test and preflight establish **contract correctness in tested paths**, **not** an observed new Population Controller/Worker or a science result under M23.1.
+- **Source carry nuance:** bootstrap reported `inherited_direct_tool_sources: 0`, which counts direct, source-root TOOL_RESULT transfers, not all previously registered historical EXTERNAL_AUDIT records. `BASE_000/carry_receipt.json` distinguishes `previously_registered_external_sources_carried`, `inherited_direct_tool_sources`, and historical peer tool carry. Verify those separately; do not claim all source content was lost from the zero count alone.
+
+## Immediate predecessor — M23 Recovery, verified by operator logs
+
+- The earlier M23 Population had 508 assets, 73 SAVED and one UNCERTAIN (`CTRL_D00015`, `HTTPError`) model calls. `MODEL_CALL_INTENT` event 1642 and `MODEL_CALL_UNCERTAIN` event 1643 were *not* rewritten or retried. Full original events 1–1645 and their source-root identity remain preserved.
+- A new read-only-verified checkpoint root contains the fully committed events 1–1641, all 508 original assets, and `UNCERTAIN_PROVIDER_RECOVERY_RECEIPT.json`; this was a clean **branch before the uncertain call**, not proof that it was delivered, billed, or scientifically resolved.
+- An autonomous new experiment bootstrapped from that checkpoint. Both independent SYNs chose `YIELD_TO_POPULATION`; one challenged charge-state identifiability against finite-exposure multichannel and flexible-nuisance nulls, with a proposed redox-versus-field factorial intervention. These are model-authored, conditional scientific analyses, *not* independent experimental validation or Level II.
+- `POPULATION_COMBINED_NO_PAID` imported 11 genuinely new peer assets, yielding **519 provisional assets**. The ensuing population Controller authored four `ONGOING` plans, all rejected with `UNKNOWN_WORK_SOURCES`; current-root Work count and committed Controller decision count were both zero. The 519 assets were pooled successfully, but **synthesis-to-execution was not completed**. After four rejected attempts the run ended operationally with `SCHEMA_RECOVERY_ATTEMPTS_EXHAUSTED`, not a scientific HOLD.
+- Read-only Source audit found exact nonregistered names `SRC_INHERITED_TOOL_7ffa92aad6062a5d970805a`, `SRC_INHERITED_TOOL_7ffa92aad6062a5d970805a8`, and `SRC_INHERITED_TOOL_c5ddf5d6f1cbba5bfaa9aac`. Other sources were truly registered. M23.1 exposes only actual allowed current-root IDs and retains exact rejected model proposals; it does not fabricate aliases or citations.
+
+## Historical evolution beyond M20
+
+- **M21:** General OA PDF route and actual independent PEER work. Both yielded, but several model-authored asset submissions were rejected due to parent/authorization mistakes. A format/retrieval/registration failure is not a scientific negative.
+- **M22:** Verified, provenance-preserving handoff of rejected peer proposals as unregistered opportunities, without falsely publishing them as claims or importing them into blind FRESH. Later M22 live Population research and source-citation problems demonstrated that transfer infrastructure alone does not guarantee scientific progress.
+- **M23:** Root-scoped, proof-checked reference/source continuity. The active Population progressed to a real citation-chain primary-source audit and follow-on review Work before the unresolved HTTP uncertainty halted that original run; scientific novelty or P0 resolution was not certified.
+- **M23 Recovery:** Independent finite-exposure/null critique, peer YIELD and population merge succeeded; the Controller could not commit a new Work because of unknown Source IDs.
+- **M23.1:** Native context/diagnostic contract corrected in a separate worktree, local regression and fresh bootstrap passed; **live paid research under this version is still unobserved**.
+
+## Next single scientific-engineering milestone
+
+Run M23.1 on its *new* pinned experiment for a long, operator-supervised autonomous campaign. A `--slice-budget 8` checkpoint is a resource boundary, not a scientific termination condition. Stop on a user stop-file, unresolved provider outcome, source-pin failure, schema-exhaustion, or independently adjudicated scientific terminal judgment; monitor actual billed usage separately.
+
+**Operational success:** after independent PEER research and pooling, the *new M23.1 Population Controller* commits a valid new Work with registered source IDs and the Worker genuinely executes it. **Continuity success:** the Worker uses inherited evidence, critiques, rejected opportunities, or calculation lineage to change a scientific action, not merely repeat text. **Scientific success:** a defensible new null bound, independent recheck, distinctive prediction/falsification route, or appropriately scoped negative emerges. None of these alone proves Level II, and an increasing asset/generation count is not a substitute.
+
+**Source/record invariants:** no overwriting previous pinned Python/Journals, no retroactive source promotion, no re-billing uncertain model calls, no interpretation of metadata or failed tool requests as primary science, no forced candidate or imposed hypothesis. Keep local research data, paid responses, secrets, full Journals, and root archives **out of Git**. Commit documentation separately from the pinned runtime Python bytes; source-pin verification hashes Python, not Markdown.
+
+---
+
+## Archived earlier development snapshots — preserved below without modification
+
 <!-- CURRENT_STATE_2026_11_01_M20 -->
 # ScientificEvolution — Current Development State
 
