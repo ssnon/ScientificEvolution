@@ -15,6 +15,7 @@ from e2core.provider import strict_envelope, content_from_wire, DurableModel
 import e2core.engine as e2_engine
 import scientific_problem_evolution as spe
 from e2core.m232_context import build_impact_context
+from e2core.m232_live import selected_mode, assessor_call
 
 RECEIPT='EXPLICIT_OPERATOR_UNKNOWN_OUTCOME_REISSUE_IN_SEPARATE_FORK_V1'
 FORK_RECEIPT='V3_FORK_FROM_RECOVERED_SCIENTIFIC_EVOLUTION_READONLY_SOURCE'
@@ -262,6 +263,7 @@ def _m232_syn_impact_input(j,base,novelty,evidence,state,delta,claims,mode):
 def controller_v3(self,ident):
     j=self.j
     m232_syn_pmi_mode=_m232_syn_pmi_mode(j)
+    m232_detail_mode=selected_mode(j,self.model)
     base=_external_context(j,'NATIVE_RESEARCH_TOOLS' if self._native_tool_contract else 'CUSTOM_BACKEND_CAPABILITIES_UNDECLARED')
     evidence=spe.classified_evidence(j);claims=spe.target_claims(base,j)
     state=spe.working_problem_state(j)
@@ -348,7 +350,8 @@ def controller_v3(self,ident):
         opp_reused=True
     else:
         opp_id='OPP_'+ident
-        raw=self.model.call(opp_id,'CONTROLLER',None,spe.OPPORTUNITY_PROMPT,augmented)
+        raw,opp_id,_=assessor_call(self.model,j,opp_id,spe.OPPORTUNITY_PROMPT,
+            augmented,'OPPORTUNITY',mode=m232_detail_mode)
         opp=spe.validate_opp(strict_envelope(raw),augmented)
         opp_reused=False
     full={**augmented,'independent_opportunity_assessment':opp,
@@ -356,17 +359,19 @@ def controller_v3(self,ident):
           'assessment_reused':opp_reused}}
     prompt=(CONTROLLER_PROMPT+(E3R1_CONTROLLER_ADDENDUM if j.verify().e3r1_policy else '')+
             '\n'+spe.CONTROLLER_FEEDBACK_ADDENDUM+'\n'+V3_ADVISORY)
-    raw=self.model.call('CTRL_'+ident,'CONTROLLER',None,prompt,full)
+    raw,m232_final_controller_call_id,_=assessor_call(self.model,j,'CTRL_'+ident,
+        prompt,full,'CONTROLLER',mode=m232_detail_mode)
     control=strict_envelope(raw)
     if control is None:
-        j.append('OPERATIONAL_PAUSE',{'reason':'CONTROLLER_INVALID_JSON','call_id':'CTRL_'+ident})
+        j.append('OPERATIONAL_PAUSE',{'reason':'CONTROLLER_INVALID_JSON',
+            'call_id':m232_final_controller_call_id})
         return {'status':'CONTROLLER_INVALID_JSON'}
-    try:planned=controller_plan(j,control,'CTRL_'+ident,ident)
+    try:planned=controller_plan(j,control,m232_final_controller_call_id,ident)
     except (EvidenceError,KeyError,TypeError,ValueError) as exc:
         j.append('OPERATIONAL_PAUSE',{'reason':'CONTROLLER_PLAN_REJECTED:'+str(exc)[:95],
-                    'call_id':'CTRL_'+ident})
+                    'call_id':m232_final_controller_call_id})
         return {'status':'CONTROLLER_PLAN_REJECTED','detail':str(exc)}
-    j.append('CONTROLLER_DECISION',{'id':ident,'call_id':'CTRL_'+ident,
+    j.append('CONTROLLER_DECISION',{'id':ident,'call_id':m232_final_controller_call_id,
        'parsed_blob':j.blob(control),'rationale':control['rationale']})
     for kind,p in planned:j.append(kind,p)
     assess=control.get('objective_assessment') if j.verify().r5_policy else None
