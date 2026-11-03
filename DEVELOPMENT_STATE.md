@@ -1,3 +1,70 @@
+<!-- CURRENT_STATE_2026_11_03_M233 -->
+# ScientificEvolution — Current Development State
+
+**Verified documentation checkpoint:** 2026-11-03 (KST). The remote `ssnon/ScientificEvolution` branch `dev/m23-2-efficient-development` is accessible at source commit `168d0714cf1a2f94a3e6b98cbb1913677c3b4e2f` (M23.3) **before this documentation-only commit**. Local working repository: `~/ScientificEvolution_M23_2` in the operator's WSL `graphAgent311` environment. Implementation claims below are supported by user-shared test/paid-call logs and source-pinned read-only audits; private Journal bytes are not published.
+
+**Mission and scientific boundaries.** Build a **general-purpose autonomous AI Scientist**, not a specialized FAKG/KG/SERS workflow. Human P0, independent FRESH and informed researchers, adversarial null comparisons, real tools/evidence, population synthesis, and verifiable cross-generation science remain the objective. SERS intermittency is a testbed. A Level II proposal means a review-worthy, falsifiable and physically bounded *pre-experimental* mechanism, **not** a verified discovery. See [PROJECT_VISION.md](PROJECT_VISION.md) and the dated records in [RESEARCH_EVOLUTION_LOG.md](RESEARCH_EVOLUTION_LOG.md).
+
+## Current verified engineering state — M23.2/M23.3
+
+| Sequence | Source commit | Change | Evidence |
+| --- | --- | --- | --- |
+| M23.2 context delivery | Earlier M23.2 development | `ON_DEMAND` index, `REQUEST_DETAILS` and `REQUEST_FULL_CONTEXT` to recover original science. | Observed OPP/CTRL prompt sizes changed from ~424–429K to ~312–316K tokens, still above the 272K price boundary. |
+| M23.2 namespace | `fb911f0` | `COMPACT` opt-in removing redundant asset namespace/alias representation; preserves exact original ID and scientific source relations. | 146,015 JSON bytes shadow saving; 11 new tests passed, earlier full regression 150 passed/1 skipped. Live STANDARD OPP 312,050 / CTRL 316,048 versus COMPACT OPP 248,109 / CTRL 252,288 tokens. |
+| M23.2 selective cache | `db1b696` | Opt-in `SELECTIVE_NO_WRITE` for PMI, OPP, CTRL; keep NVT AUTO, durable wire hash and fail-closed reuse. | 6 policy tests and full regression passed. Live PMI/OPP/CTRL cache writes all zero in SELECTIVE. |
+| M23.3 metadata and references | `168d071` | `SEPARATE` opt-in moves original metadata hashes out of visible indexed model rows while preserving full Journal/DetailSession; adds `BAD_WORK` reference diagnostics without auto-correction. | 12 M23.3 tests passed. Full reported suite: 168 pass, 1 skipped. Shadow exact restore; live A/B with genuine provider usage. |
+
+**Candidate for subsequent NEW experiments** (not a changed default and never to be applied retroactively to an old root):
+
+```bash
+M232_CONTROLLER_DETAIL_MODE=ON_DEMAND
+M232_NAMESPACE_MODE=COMPACT
+M232_CACHE_POLICY=SELECTIVE_NO_WRITE
+M233_MODEL_METADATA_MODE=SEPARATE
+```
+
+`M232_SYN_PMI_MODE=FULL` was also held fixed in the controller-slice A/B. Exact runtime behavior must be read from the pinned source/version; an environment-variable label is not a substitute for verifying the actual saved request wire.
+
+## Actual price and prompt observations
+
+All dollar figures are the **reported provider charges for the specified saved requests**, not projected monthly costs or a causal meta-analysis. Different A/B arms produced different model outputs (including NVT response and cache state); do **not** add percentages or claim science equivalence from a single comparison.
+
+| A/B | Stage(s) | Baseline cost | Opt-in cost | Observed reduction |
+| --- | --- | ---: | ---: | ---: |
+| STANDARD vs COMPACT namespace | OPP + CTRL | $0.32061840 | $0.12962655 | ~59.6% |
+| AUTO vs SELECTIVE cache | PMI + OPP + CTRL | $0.17772920 | $0.14362940 | ~19.2% |
+| FULL vs SEPARATE metadata | OPP + CTRL | $0.10507260 | $0.08639800 | ~17.8% |
+
+The namespace test crossed the observed 272K prompt pricing boundary for both OPP and CTRL, so the cost change is larger than the prompt-token change alone. The cache A/B confirmed `cache_write_tokens=0` for PMI/OPP/CTRL while retaining NVT AUTO, but NVT cache hits differed across independent runs. The M23.3 A/B observed OPP **248,575 → 204,084** and CTRL **252,710 → 207,614** prompt tokens; the FULL and SEPARATE total 4-stage bills were **$0.2129135** and **$0.1352338**, but that 36.5% total bill reduction is **not attributable solely to metadata** because FULL NVT wrote 253,510 cache tokens while SEPARATE NVT read 253,510 cached tokens.
+
+Before the paid metadata A/B, read-only Shadow projection saved **103,192 bytes from each** OPP and CTRL payload with `full_roundtrip_exact=true`, preserving the original hashes and detail recovery. The live `SEPARATE` requests marked **537 indexed assets and 238 indexed problems**; the earlier shadow sample had **538 indexed assets and 238 indexed problems**. The byte result is not a token-price estimate; the live provider token counts are the appropriate measured quantity.
+
+## Execution truth and scientific comparison of M23.3 A/B
+
+- **Source equality:** Separate fresh experiment roots `M233_META_FULL_20261103_01` and `M233_META_SEPARATE_20261103_01`, each with 546 inherited assets, 239 problems, base Journal 1,457 events, same scientific fingerprint `076b59287d7fe3c6579a9adc43dea90ae9e6997a1333c1ca68b37e30d4c854aa` and base head `81f533d5e8f8d8b743bd37e72de1f40b905c2989e33c6d17b303338a3e1cdd75`. No independent direct tool transfer was reported at bootstrap; inherited `EXTERNAL_AUDIT` records remain distinct from operator-verified new PRIMARY evidence.
+- **FULL:** four calls `SAVED`, **zero committed Controller decisions or Work**. The controller chose `ONGOING`, P0, an INFORMED `DEVELOP` finite-exposure CTMC-HMM adversarial benchmark. It was **rejected** with `CONTROLLER_PLAN_REJECTED:UNKNOWN_WORK_SOURCES`: `SRC_INHERITED_TOOL_0283f27646701431bec6599` is not registered even though `A_CARRY_0283f27646701431bec6599` is a registered Asset. Identical ID suffix suggests an Asset/Source namespace mix-up, but does not prove the intended correct Source; no automatic remapping or phantom Source creation is authorized.
+- **SEPARATE:** four calls `SAVED`, **one Controller decision and one INFORMED `DEVELOP` Work committed** (`W_INFORMED_CTMC_HMM_IDENTIFIABILITY_001`, P0). Status `ONGOING`, objective `UNRESOLVED`, research `CONTINUING`. Work input listed five historical assets and an empty direct `source_ids` list. **The Worker had not executed the planned benchmark** in this A/B; a committed Work is not a validated computation.
+- **Scientific overlap:** both model-authored plans independently selected the same *type* of research: exact finite-exposure CTMC-HMM/Poisson observation-law checks, matched strong nulls (occupancy, selective field, orientation, photochemistry, thermal, contact, detector), held-out discrimination, physically bounded nuisance parameters and explicit scoped negative conditions. Both reject a causal or novelty claim from model-class separation alone. Different NVT responses and different assets mean this **does not certify causal scientific equivalence or long-run quality**.
+- **FRESH watchpoint:** an unselected SEPARATE Opportunity suggestion was labeled FRESH yet listed parent Asset IDs. This was **not committed as a FRESH Work**, but future Population evaluation must verify actual FRESH isolation rather than trust an advisory label.
+
+## Validation failures preserved, never converted into science
+
+- M23.2 AUTO Controller produced `BAD_WORK` with an unregistered `P_CARRY_c0c1e0fd8131939f7a6da5d` Problem, whereas the similarly suffixed `A_CARRY_c0c1e0fd8131939f7a6da5d` Asset exists. M23.3 diagnostics confirmed `UNREGISTERED_WORK_PROBLEM_ID`, kept the original SAVED response and refused to substitute `P0`.
+- M23.3 FULL Source-ID mismatch above remains a different, uncommitted validation failure. M23.3's Problem reference diagnostics **do not claim to have solved arbitrary Asset/Source confusion**.
+- These are operational/semantic validation failures, **not scoped negative findings about SERS**, and must not be silently retried, corrected, or logged as autonomous scientific conclusions.
+
+## Development limits, next milestone, and safeguards
+
+**Observed success:** prompt/cost reduction, no-paid regression and exact projection roundtrip, live wire contract, and one valid Controller commitment on the M23.3 SEPARATE branch. **Not yet observed:** real execution of that Work; independently verified new primary-source inspection under this version; verified CTMC-HMM/null benchmark; independently evaluated Level II; population-wide multi-generation cost per validated scientific advance.
+
+**Next milestone:** stop further prompt shaving as the default priority. Start a **new source-pinned autonomous Population** with the candidate opt-in config and an explicit operational provider budget; preserve the earlier A/B roots and their SAVED/rejected responses unchanged. Verify actual Worker computation, source provenance, FRESH isolation, integration by population SYN, autonomous follow-up science, and cross-generation inheritance; report cost by stage and per validated scientific delta. An operational spend pause is **not** a scientific HOLD. Never reissue an uncertain provider call automatically.
+
+**Do not Git-commit** local research roots, raw model requests/responses, payment receipts, secrets, private papers, or Journals. Preserve exact evidence-class distinctions, Source IDs and root identity; no source fabrication, no retroactive primary certification, no operator-selected scientific winner.
+
+---
+
+## Archived 2026-11-02 development-state checkpoint (M23.1; preserved below)
+
 <!-- CURRENT_STATE_2026_11_02_M231 -->
 # ScientificEvolution — Current Development State
 

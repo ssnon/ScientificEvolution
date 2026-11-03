@@ -1,4 +1,58 @@
-# Scientific Evolution — V4 active runtime snapshot
+# ScientificEvolution — autonomous AI Scientist development
+
+**Current documentation checkpoint: 2026-11-03 (KST).** Active source branch: `dev/m23-2-efficient-development`; verified implementation head before this documentation update: `168d071` (M23.3 metadata projection and reference diagnostics). This README covers the **current development branch**, not a completed scientific result. Earlier V4 snapshot information remains below as historical context.
+
+The mission is a **general-purpose autonomous AI Scientist**. A human supplies an unresolved scientific problem (P0); independent FRESH and informed researchers propose, challenge, calculate, obtain evidence, and generate follow-up work; population-level synthesis determines continuation, branching, or scientifically justified termination. SERS intermittency is the present test case, not the engine's fixed scientific objective. See [PROJECT_VISION.md](PROJECT_VISION.md).
+
+## Current documents
+
+- [DEVELOPMENT_STATE.md](DEVELOPMENT_STATE.md) — current implementation, source-pinned experiments, measured operating costs, limitations, and next engineering milestone.
+- [RESEARCH_EVOLUTION_LOG.md](RESEARCH_EVOLUTION_LOG.md) — append-only research/operational evidence chronology, including rejected calls and the M23.2–M23.3 A/B comparisons.
+- [PROJECT_VISION.md](PROJECT_VISION.md) — scientific north star, FRESH isolation, provenance, and development discipline.
+
+## M23.2–M23.3 development checkpoint
+
+The controller evaluation path uses Novelty (NVT), Problem Impact (PMI), Opportunity (OPP), and Controller (CTRL). The changes below reduce development/runtime overhead **without dropping strong-null evaluation or promoting unverified model outputs to primary evidence**:
+
+| Feature | Tested effect / boundary |
+| --- | --- |
+| `ON_DEMAND` indexed context | Detail and full-context retrieval remain available; the initial large OPP/CTRL prompt was reduced from roughly 424–429K to 312–316K tokens in the earlier comparison. |
+| `M232_NAMESPACE_MODE=COMPACT` | Exact ID/alias roundtrip and source-provenance checks; observed OPP/CTRL input went from 312,050/316,048 to 248,109/252,288 tokens, crossing below the observed 272K pricing threshold. |
+| `M232_CACHE_POLICY=SELECTIVE_NO_WRITE` | In the measured A/B, PMI/OPP/CTRL cache-write tokens became zero while NVT retained AUTO; about 19.2% combined PMI/OPP/CTRL cost reduction was observed, with response-length variation. |
+| `M233_MODEL_METADATA_MODE=SEPARATE` | Integrity hashes remain in the original Journal/detail session while indexed rows advertise their incompleteness; observed OPP/CTRL prompt tokens fell 248,575→204,084 and 252,710→207,614. |
+| Reference diagnostics | Preserve the SAVED model response and reject invalid Work references; never silently convert Asset IDs into Problem or Source IDs. |
+
+Candidate configuration **for a new source-pinned experiment only**:
+
+```bash
+export M232_CONTROLLER_DETAIL_MODE=ON_DEMAND
+export M232_NAMESPACE_MODE=COMPACT
+export M232_CACHE_POLICY=SELECTIVE_NO_WRITE
+export M233_MODEL_METADATA_MODE=SEPARATE
+```
+
+These are **opt-in settings**, not permission to resume an old paid Journal under a changed wire schema. The last M23.3 A/B was a **single Controller decision per root**, not a completed autonomous Population or Worker research run. In `SEPARATE`, one INFORMED `DEVELOP` Work was committed, but its research was **not executed**. In `FULL`, one controller plan was rejected due to an unregistered Source ID; this is not a scientific negative. P0 remains `UNRESOLVED`; no new Level II mechanism or causal SERS attribution was certified.
+
+## No-paid local regression on the development branch
+
+Use the verified WSL environment and the current local repository. This does not make provider calls:
+
+```bash
+conda activate graphAgent311
+cd "$HOME/ScientificEvolution_M23_2"
+unset FAKG_RESEARCH_ALLOW_PAID OPENROUTER_API_KEY
+export PYTHONPATH="$PWD/runtime:$PWD/AUTONOMOUS_SCIENTIFIC_EVOLUTION_20261029"
+python -m compileall -q runtime AUTONOMOUS_SCIENTIFIC_EVOLUTION_20261029
+while IFS= read -r directory; do
+  python -m unittest discover -s "$directory" -p 'test_*.py' -q
+done < <(find checks -type f -name 'test_*.py' -printf '%h\n' | sort -u)
+```
+
+Last operator-reported result at source `168d071`: **168 tests passed, one skipped**. This tests software contracts, not scientific validity. Research Journals, provider keys, raw responses, usage receipts, and experiment roots remain outside Git; operational spending guards are not scientific stop decisions.
+
+---
+
+## Historical V4 active runtime snapshot (2026-10-31)
 
 > **Development navigation (2026-10-31):** This README documents the preserved
 > V4 snapshot. For the current general-purpose AI Scientist objective and
