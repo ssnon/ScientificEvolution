@@ -541,6 +541,8 @@ def step_once(mods,experiment,args):
         before=pp.digest(mods,mods.J(root))
         result=drive_slice(mods,root,'PEER',args)
         out({'status':'PEER_RESEARCH_SEGMENT','generation':cycle['index'], 'peer':name,**result})
+        if result['stop']=='OPERATIONAL_DEVELOPMENT_BUDGET_PAUSE':
+            return 'BUDGET_PAUSE'
         if result['stop']=='SCHEMA_RECOVERY_ATTEMPTS_EXHAUSTED':
             out(quarantine_peer_schema(mods,experiment,cycle,name,result['stop']))
             return 'CONTINUE'
@@ -572,6 +574,8 @@ def step_once(mods,experiment,args):
         if pp.last_disposition(ss) not in pp.TERMINAL:
             result=drive_slice(mods,root,'POPULATION',args,tuple(cycle['peers']))
             out({'status':'POPULATION_RESEARCH_SEGMENT','generation':cycle['index'],**result})
+            if result['stop']=='OPERATIONAL_DEVELOPMENT_BUDGET_PAUSE':
+                return 'BUDGET_PAUSE'
             if result['spent']==0 and result['stop'] not in ('ALREADY_SCIENTIFIC_TERMINAL_NO_NEW_CALLS','LOCAL_SCIENTIFIC_TERMINAL'):
                 fail('NO_POPULATION_PROVIDER_PROGRESS_OPERATIONAL_REVIEW_REQUIRED')
             if result['stop'] not in ('CALL_BUDGET','ALREADY_SCIENTIFIC_TERMINAL_NO_NEW_CALLS','LOCAL_SCIENTIFIC_TERMINAL'):
@@ -626,8 +630,20 @@ def run(args):
             begin=time.monotonic();iterations=0;last_notice=0
             while True:
                 if not ensure_not_stopped(root):return
-                state=step_once(mods,root,args)
+                try:
+                    state=step_once(mods,root,args)
+                except mods.Error as exc:
+                    if str(exc)!='OPERATIONAL_DEVELOPMENT_BUDGET_REACHED_NO_NEW_CALL_INTENT':
+                        raise
+                    state='BUDGET_PAUSE'
                 iterations+=1
+                if state=='BUDGET_PAUSE':
+                    latest=current_cycle(root)
+                    out({'status':'AUTONOMOUS_DEVELOPMENT_BUDGET_PAUSE_NOT_SCIENTIFIC_HOLD',
+                         'cycle_stage':latest['stage'] if latest else None,
+                         'no_automatic_paid_retry':True,
+                         'budget_cap_must_be_reviewed_by_operator':True})
+                    return
                 if state=='SCIENTIFIC_TERMINAL':
                     out({'status':'AUTONOMOUS_GLOBAL_SCIENTIFIC_DISPOSITION_RECORDED',
                         'not_proof_of_scientific_discovery':True});return

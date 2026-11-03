@@ -9,6 +9,7 @@ from contextlib import ExitStack, contextmanager
 from .core import EvolutionJournal, guard, sha, canon, EvidenceError
 from .engine import Engine
 from .provider import DurableModel
+from .m235_operational_boundary import is_dev_budget_pause, BUDGET_PAUSE
 
 @contextmanager
 def locked_sources(*roots):
@@ -259,6 +260,12 @@ def drive(root,*,budget,chunk,max_tokens,model,cpu,wall,paid,parallel=1):
             if out['status']=='SCIENTIFIC_DISPOSITION_PROPOSED':
                 final_objective=j.verify().objective_assessments[-1] if j.verify().objective_assessments else None
                 stop_reason=('OBJECTIVE_COMPLETED' if final_objective and final_objective['research_status']=='COMPLETED' else ('AUTONOMOUS_RESEARCH_PAUSED_NOT_OBJECTIVE_COMPLETED' if final_objective else 'AUTONOMOUS_SCIENTIFIC_DISPOSITION'));break
+            # An exhausted *development dollar reservation* is not a
+            # per-segment call budget, research failure or scientific HOLD.
+            # Do not issue another call on this launch after this signal.
+            if is_dev_budget_pause(out['decisions']):
+                stop_reason=BUDGET_PAUSE
+                break
             stop=False;recoverable_controller=False
             for d in out['decisions']:
                 if d.get('operational_pause') and 'OPERATIONAL_CALL_BUDGET_REACHED' not in d['operational_pause']:

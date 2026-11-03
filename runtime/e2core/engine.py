@@ -14,6 +14,8 @@ from .research_continuity import (
     opportunities_for_journal, pin_work_handoff, concise_index, worker_handoff,
 )
 from .worker_json import parse_worker_response
+from .m235_lineage_feedback import own_lineage_feedback, rejected_asset_fields
+from .m235_operational_boundary import is_dev_budget_error, BUDGET_PAUSE
 from .verified_science import verify_calculation, ScienceInputError
 from .science_sandbox import run_science_python
 from .literature import crossref_lookup
@@ -702,6 +704,7 @@ def _worker_input(j,wid,tool_capabilities=None):
     result={'pinned_input':base,'own_prior_steps':prior,
         'research_capability_state':research_worker_context(j,wid,tool_capabilities),
         'research_action':'Make next scientific judgement. If missing primary evidence would materially change the research, consider actual available literature/data tools. Search is a scientific option, never a quota; record a causal scientific delta from any retrieved text.'}
+    result['m235_own_lineage_feedback'] = own_lineage_feedback(j,s,wid)
     if w['mode']=='INFORMED' and w.get('opportunity_input_ids'):
         result['explicit_unregistered_opportunity_handoff']=worker_handoff(w)
     result['m23_asset_publication_source_contract']=_m23_worker_publication_source_contract(s,w)
@@ -884,7 +887,9 @@ class Engine:
                     payload['runtime_id_assignment']='COLLISION_FREE_ASSET_NAMESPACE_V1'
                 try:sim.apply('ASSET_PUBLISHED',payload)
                 except (EvidenceError,ValueError,KeyError,TypeError) as ex:
-                    rejected.append({'kind':'ASSET','index':idx,'error':str(ex)[:150]});continue
+                    rejected.append({'kind':'ASSET','index':idx,'error':str(ex)[:150],
+                        **rejected_asset_fields(a, sim)})
+                    continue
                 accepted.append(('ASSET_PUBLISHED',payload))
             for kind,p in accepted:self.j.append(kind,p)
             if rejected or aliases or asset_aliases:
@@ -1071,7 +1076,8 @@ class Engine:
                     # still create one; don't silently call this success.
                     if status and 'controller' in status[-1]:break
             except EvidenceError as exc:
-                reason='WORKER_OR_CONTROLLER_RUNTIME_ERROR:'+str(exc)[:180]
+                reason=(BUDGET_PAUSE if is_dev_budget_error(exc)
+                    else 'WORKER_OR_CONTROLLER_RUNTIME_ERROR:'+str(exc)[:180])
                 status.append({'operational_pause':reason})
                 self.j.append('OPERATIONAL_PAUSE',{'reason':reason})
                 break
