@@ -12,6 +12,7 @@ import argparse, json
 from collections import Counter
 from .core import EvolutionJournal
 from .evidence_continuity import inherited_inventory, uninterpreted_last_tool_feedback, inherited_planning_brief
+from .m234_execution_observation import inspect_python_execution
 
 NATIVE_TOOLS = [
     {'kind':'literature_research','purpose':'Autonomously discover scholarly records and read accessible original evidence',
@@ -40,7 +41,7 @@ def _attempts(j, allowed_work=None):
         kind=req.get('kind','UNKNOWN') if isinstance(req,dict) else 'UNKNOWN'
         action=(req.get('arguments') or {}).get('action') if isinstance(req,dict) and isinstance(req.get('arguments',{}),dict) else None
         if not isinstance(result,dict):result={'status':'UNRECOGNIZED_RESULT'}
-        attempts.append({
+        attempt = {
           'tool_id':tid,'work_id':row['work_id'],'tool_kind':kind,
           'action':action,'result_status':result.get('status'),
           'evidence_class':result.get('evidence_class'),
@@ -49,7 +50,10 @@ def _attempts(j, allowed_work=None):
           'fallback_reason':result.get('fallback_reason'),
           'linked_source_id':result.get('linked_source_id'),
           'source_url':result.get('source_url') or result.get('requested_url'),
-        })
+        }
+        if kind == 'python_science':
+            attempt['execution_observation'] = inspect_python_execution(req, result)
+        attempts.append(attempt)
     return attempts
 
 
@@ -92,6 +96,8 @@ def research_capability_state(j,contract=None):
       'inherited_evidence_planning_brief':inherited_planning_brief(j,s,'INFORMED'),
       'pending_local_tool_feedback':uninterpreted_last_tool_feedback(j,s),
       'attempt_inventory':{'total_recorded_tools':len(attempts),
+        'recent_python_execution_observations':
+           [a for a in attempts if a['tool_kind']=='python_science'][-5:],
         'recorded_literature_attempts':len(literature),
         'by_kind':dict(Counter(a['tool_kind'] for a in attempts)),
         'by_result_status':dict(Counter(str(a['result_status']) for a in attempts)),
@@ -99,7 +105,10 @@ def research_capability_state(j,contract=None):
         'recent_literature_attempts':literature[-8:]},
       'interpretation':'ZERO literature attempts means NOT YET TRIED, NOT EVIDENCE UNAVAILABLE. '
            'Nonzero unsuccessful attempts may be access failures or invalid requests; inspect results. '
-           'An accessible source may still be insufficient to solve the science. This does not prescribe a decision.',
+           'An accessible source may still be insufficient to solve the science. '
+           'Python sandbox EXECUTED does not imply numerical computation, benchmark completion, or scientific validation; '
+           'inspect recent_python_execution_observations for self-reported noncomputation. '
+           'This does not prescribe a decision.',
       'scientific_action_discretion':'You decide whether obtaining literature/data or doing other scientific work offers enough information value. No forced search or research continuation.'}
 
 
@@ -120,7 +129,10 @@ def research_worker_context(j,work_id,contract=None):
       'own_recorded_tool_attempts':len(attempts),
       'own_recent_tool_attempts':attempts[-6:],
       'guidance':'If source evidence is critical and may be accessible, consider asking a tool, reading its actual return, and linking exact source IDs to scientific claims. '
-       'If sources are not relevant, proceed theoretically or RETURN; no tool-use quota exists. An unattempted search cannot be called a failed search.'}
+       'If sources are not relevant, proceed theoretically or RETURN; no tool-use quota exists. An unattempted search cannot be called a failed search. '
+       'For python_science, EXECUTED means sandbox code ran, not that a scientific computation was performed or checked. '
+       'An execution_observation of SANDBOX_EXECUTED_MODEL_DECLARED_NO_COMPUTATION reports a model-authored noncomputation marker, not a validated numeric result. '
+       'Decide independently whether to calculate, derive analytically, revise the plan or return; no mandatory computation.'}
 
 
 def main(argv=None):

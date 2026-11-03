@@ -74,6 +74,16 @@ CONTROLLER_PROMPT += ('\nNATIVE RESEARCH CONTINUITY: new_problems may use '
     'rejected MODEL proposals, not accepted assets or empirical evidence. '
     'You may assign exact opportunity_input_ids only to an INFORMED Work. '
     'You may ignore them. Never give them to a FRESH Work.\n')
+# M23.4 — Scientific execution integrity is observational, not a quota.
+WORKER_PROMPT += ('\nM23.4 execution integrity: python_science status EXECUTED '
+    'establishes only that the sandbox ran the submitted code. It does not '
+    'establish that a simulation, numerical test, calculation or proof occurred. '
+    'If the returned model-authored result reports not_executed, explicitly '
+    'identify it as a plan rather than completed computation. Consider '
+    'actual analysis or computation if scientifically valuable, or give '
+    'a reasoned theoretical or scoped result otherwise. No forced tool, '
+    'simulation, research direction or call count.\n')
+
 WORKER_PROMPT += ('\nNATIVE RESEARCH CONTINUITY: new_problems may use '
     'parent_problem_ids for Problem ancestry and motivating_asset_ids for '
     'authorized Asset motivation. Legacy parents still means Problem IDs only. '
