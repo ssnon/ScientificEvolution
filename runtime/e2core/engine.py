@@ -15,6 +15,8 @@ from .research_continuity import (
 )
 from .worker_json import parse_worker_response
 from .m235_lineage_feedback import own_lineage_feedback, rejected_asset_fields
+from .m236_parent_recovery import (parent_reference_contract, metadata_repair_context,
+    metadata_repair_notices, all_asset_publications_rejected, REPAIR_MARKER, REPAIR_PENDING)
 from .m235_operational_boundary import is_dev_budget_error, BUDGET_PAUSE
 from .verified_science import verify_calculation, ScienceInputError
 from .science_sandbox import run_science_python
@@ -705,6 +707,8 @@ def _worker_input(j,wid,tool_capabilities=None):
         'research_capability_state':research_worker_context(j,wid,tool_capabilities),
         'research_action':'Make next scientific judgement. If missing primary evidence would materially change the research, consider actual available literature/data tools. Search is a scientific option, never a quota; record a causal scientific delta from any retrieved text.'}
     result['m235_own_lineage_feedback'] = own_lineage_feedback(j,s,wid)
+    result['m236_parent_reference_contract'] = parent_reference_contract(s,w)
+    result['m236_metadata_repair_context'] = metadata_repair_context(j,w)
     if w['mode']=='INFORMED' and w.get('opportunity_input_ids'):
         result['explicit_unregistered_opportunity_handoff']=worker_handoff(w)
     result['m23_asset_publication_source_contract']=_m23_worker_publication_source_contract(s,w)
@@ -943,7 +947,31 @@ class Engine:
             # Even if the worker requested RETURN, tool output must be interpreted by worker first.
             return {'work_id':wid,'status':'TOOL_FEEDBACK_PENDING','tool_status':result.get('status')}
         final_action=parsed['next_action']
-        if rejected and not accepted and final_action in {'RETURN','HOLD'}:
+        # One operational correction opportunity when no proposed ASSET
+        # reached the Journal. The original model text and validator's
+        # rejection are already durably journaled above. This does not
+        # impose a research-step limit or prescribe scientific content.
+        metadata_undelivered=all_asset_publications_rejected(rejected,accepted)
+        if metadata_undelivered and final_action in {'RETURN','HOLD'}:
+            current=self.j.verify().work[wid]
+            if metadata_repair_notices(self.j,current)==0:
+                self.j.step(wid,'OUTPUT_VALIDATION',{
+                    'status':REPAIR_MARKER,'call_id':call_id,
+                    'proposed_final_action':final_action,
+                    'rejected_asset_count':sum(1 for x in rejected if x.get('kind')=='ASSET'),
+                    'allowed_parent_ids':parent_reference_contract(self.j.verify(),current)['allowed_registered_parent_ids'],
+                    'source_of_truth':'PRIOR_REJECTION_EVENT_AND_REGISTERED_JOURNAL',
+                    'no_scientific_disposition':True,
+                    'no_automatic_asset_repair':True,
+                    'original_response_preserved':True})
+                return {'work_id':wid,'status':REPAIR_PENDING,
+                    'published':0,'rejected_metadata':len(rejected),
+                    'model_response_saved':True,'science_certification':False}
+            self.j.finish(wid,'BLOCKED',
+                'Repeated all-rejected final asset submission after one metadata delivery notice; original science preserved')
+            final_action='BLOCKED_METADATA'
+        elif rejected and not accepted and final_action in {'RETURN','HOLD'}:
+            # Preserve the previous treatment for non-asset metadata errors.
             self.j.finish(wid,'BLOCKED','All proposed metadata rejected; original scientific text retained unaltered')
             final_action='BLOCKED_METADATA'
         elif final_action in ('RETURN','HOLD'):
