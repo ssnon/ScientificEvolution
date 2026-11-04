@@ -181,6 +181,13 @@ def prepare_clean_portfolio(mods,source_root,dest):
                 'not_registered_science':True})
         carried_sources=carry_registered_external_evidence(mods,j,source,ss)
         imported_sources=pop.record_direct_tool_sources(mods,j,source,ss,'PRIOR_GENERATION')
+        # M23.6.2: The immediately preceding Population also executes real
+        # python_science/verified_calculation tools. Preserve its exact request
+        # and result as historical EXTERNAL_AUDIT sources, just like peer tools.
+        # Never replay a tool, promote an execution to scientific certification,
+        # or expose inherited evidence as a new FRESH observation.
+        population_science_tools=pop.record_science_tool_results(
+            mods,j,source,ss,'PRIOR_POPULATION')
         # M19: Before starting a newly pinned root, recover genuine science
         # tool executions left in prior PEER journals, including unreviewed
         # Python results not yet represented in the source Population.
@@ -232,6 +239,7 @@ def prepare_clean_portfolio(mods,source_root,dest):
             'base_root':str(dest),'source_assets':len(ss.assets),'new_ids':amap,
             'edges':transfers,'inherited_direct_tool_sources':imported_sources,
             'previously_registered_external_sources_carried':carried_sources,
+            'prior_population_science_tool_carry':population_science_tools,
             'historical_peer_science_tool_carry':historical_peer_science,
             'unfinished_work_statuses_preserved_as_history':True,
             'unregistered_opportunities_preserved_not_scientific_assets':len(prior_unregistered),
