@@ -92,6 +92,7 @@ def verify_runtime_source(mods, research_root):
     # Import resolution is distinct from file hashing: reject overlay modules.
     for name in ('e2core.core', 'e2core.engine', 'e2core.provider',
                  'e2core.research_continuity', 'e2core.math_cycle',
+                 'e2core.math_claim_selection',
                  'scientific_problem_evolution',
                  'scientific_closed_loop_v3', 'scientific_research_readiness_v4',
                  'generational_run', 'population_run', 'persistent_population',

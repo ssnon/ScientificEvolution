@@ -1,4 +1,4 @@
-"""Native, opt-in mathematics review frontier for the E2 scientific Journal.
+"""Native, opt-in recursive math reviews with V1.1 Controller-selected claims.
 
 No mathematical result is certified by this module. It schedules independent
 VERIFY Work for *newly published* mathematical Assets, including mathematical
@@ -89,7 +89,7 @@ def enable_on_clean_root(j):
     return True
 
 
-def is_new_math_target(s,asset_id):
+def is_new_math_target(s,asset_id,j=None):
     a=s.assets[asset_id]
     # Historical carried claims are not a fresh research action; a Controller
     # may explicitly assign them to VERIFY in ordinary science. We auto-queue
@@ -97,8 +97,12 @@ def is_new_math_target(s,asset_id):
     if not a.get('work_id'):return False
     creator=s.work.get(a['work_id'])
     if not creator:return False
+    selected=False
+    if j is not None:
+        from .math_claim_selection import selected_claim_for_work
+        selected=bool(selected_claim_for_work(j,creator['id']))
     return (a['kind'] in DEFAULT_KINDS or
-            bool(verifier_subject(creator)) or bool(reassess_subject(creator)))
+            bool(verifier_subject(creator)) or bool(reassess_subject(creator)) or selected)
 
 
 def on_assets_published(j,asset_ids):
@@ -112,7 +116,7 @@ def on_assets_published(j,asset_ids):
     scheduled=[]
     for aid in asset_ids:
         s=j.verify()
-        if aid not in s.assets or not is_new_math_target(s,aid):continue
+        if aid not in s.assets or not is_new_math_target(s,aid,j=j):continue
         wid=verifier_work_id(aid)
         if wid in s.work:continue
         a=s.assets[aid]
@@ -136,6 +140,11 @@ def before_worker_model(j,wid,worker_system,payload):
     if not enabled(j,s):return worker_system,payload
     w=s.work[wid]
     aid=verifier_subject(w)
+    selected=None
+    if not aid:
+        from .math_claim_selection import selected_claim_for_work
+        selected=selected_claim_for_work(j,wid)
+        if selected:aid=selected['asset_id']
     if aid:
         # Silo the reviewer's input: no cross-review mathematical solutions or
         # entire population summaries; only its pinned subject and own feedback.
@@ -151,20 +160,25 @@ def before_worker_model(j,wid,worker_system,payload):
             raise RuntimeError('MATH_VERIFIER_WRONG_PINNED_PARENT')
         restricted['native_math_review']={
             'protocol':PROTOCOL,'subject_asset_id':aid,
+            'controller_selected_claim':selected,
             'independent_target_only':True,'reviewer_oracle_not_supplied':True,
             'new_math_claims_require_new_assets':True,'no_scientific_certification':True}
         return worker_system+'\n'+VERIFIER_ADDENDUM,restricted
     aid=reassess_subject(w)
     if aid:
-        reviewer=s.work.get(verifier_work_id(aid))
-        if not reviewer:raise RuntimeError('REASSESS_MISSING_NATIVE_REVIEWER')
-        review=[p for p in reviewer['steps'] if p['kind']=='MATH_REVIEW']
-        if not review:raise RuntimeError('REASSESS_REVIEW_NOT_DURABLY_RECORDED')
-        raw=json.loads(j.raw(review[-1]['raw_blob']))
+        reviewers=[]
+        for source_wid,source_work in s.work.items():
+            for st in source_work.get('steps',[]):
+                if st['kind']!='MATH_REVIEW':continue
+                record=json.loads(j.raw(st['raw_blob']))
+                if record.get('target_asset_id')==aid:
+                    reviewers.append((source_wid,record))
+        if not reviewers:raise RuntimeError('REASSESS_REVIEW_NOT_DURABLY_RECORDED')
+        reviewer_wid,raw=reviewers[-1]
         feedback={
             'protocol':PROTOCOL,'subject_asset_id':aid,
             'review_record':raw,
-            'reviewer_work_id':verifier_work_id(aid),
+            'reviewer_work_id':reviewer_wid,
             'not_a_math_certificate':True,
             'new_reviewer_assets_also_reviewed_independently':True}
         return worker_system+'\n'+REASSESS_ADDENDUM,{**payload,'native_math_review_feedback':feedback}
@@ -179,6 +193,11 @@ def on_verifier_final(j,wid,parsed,call_id):
     """
     s=j.verify();w=s.work[wid]
     aid=verifier_subject(w)
+    selected=None
+    if not aid:
+        from .math_claim_selection import selected_claim_for_work
+        selected=selected_claim_for_work(j,wid)
+        if selected:aid=selected['asset_id']
     if not aid or not enabled(j,s):return None
     if any(step['kind']=='MATH_REVIEW' for step in w['steps']):return None
     verdict=parsed.get('math_review')
@@ -191,6 +210,7 @@ def on_verifier_final(j,wid,parsed,call_id):
                 'format':'RESPONSE_NOT_STRUCTURED_NO_MATH_CERTIFICATION'}
     reviewed={'protocol':PROTOCOL,'target_asset_id':aid,'verifier_work_id':wid,
         'verifier_model_call_id':call_id,'review':review,
+        'controller_selected_claim':selected,
         'new_assets_by_verifier':list(w.get('published',[])),
         'scientific_text':parsed.get('scientific_text',''),
         'result':'PROVISIONAL_REVIEW_RECORDED_NOT_SCIENCE_CERTIFIED',
@@ -202,7 +222,17 @@ def on_verifier_final(j,wid,parsed,call_id):
     # verifier or a reappraisal, its NEW math assertions already enter the
     # recursive verification queue; do not spawn a redundant reappraisal tree.
     s=j.verify();origin=s.work.get(s.assets[aid].get('work_id'))
-    if origin is None or verifier_subject(origin) or reassess_subject(origin):
+    selected_origin=False
+    if origin is not None:
+        from .math_claim_selection import selected_claim_for_work
+        selected_origin=bool(selected_claim_for_work(j,origin['id']))
+    # A directly carried historical claim has no executable original author
+    # in the current root. Start a NEW, clearly labelled INFORMED reassessment
+    # instead of pretending to resume its historical Work.
+    inherited_author=(origin is None and bool(s.assets[aid].get('carried_from_root')))
+    if ((origin is None and not inherited_author) or
+            (origin is not None and (verifier_subject(origin) or
+                 reassess_subject(origin) or selected_origin))):
         return reviewed
     rid=reassess_work_id(aid)
     if rid in s.work:return reviewed
@@ -216,7 +246,9 @@ def on_verifier_final(j,wid,parsed,call_id):
                'the evidence. If making a new mathematical claim, publish it as '
                'a new science Asset so that it too is independently reviewed. '
                'No required agreement and no imposed scientific conclusion.'),
-          'research_rationale':REASSESS_REASON+aid+' Response to recorded native independent review.'}
+          'research_rationale':REASSESS_REASON+aid+
+              (' NEW_CURRENT_ROOT_REASSESSMENT_OF_HISTORICAL_CLAIM.' if inherited_author
+               else ' Response to recorded native independent review.')}
     j.evolve('E_NMREASSESS_'+_digest(aid),'DEVELOP',authorized,work,
              'SOURCE_AUTHOR_REASSESSMENT_OF_INDEPENDENT_REVIEW_NOT_AUTOMATIC_ACCEPTANCE')
     return reviewed
@@ -226,14 +258,16 @@ def pending_math_work(j):
     s=j.verify()
     if not enabled(j,s):return []
     open_ids=[]
+    from .math_claim_selection import selected_claim_for_work
     for wid,w in s.work.items():
-        if not (verifier_subject(w) or reassess_subject(w)):continue
+        if not (verifier_subject(w) or reassess_subject(w) or selected_claim_for_work(j,wid)):
+            continue
         if w['status'] in {'QUEUED','ACTIVE'}:
             open_ids.append(wid)
         elif w['status']=='DONE' and w.get('outcome') in {'BLOCKED'}:
             # An operationally blocked review is not a completed validation.
             open_ids.append(wid)
-        elif (verifier_subject(w) and w['status']=='DONE' and
+        elif ((verifier_subject(w) or selected_claim_for_work(j,wid)) and w['status']=='DONE' and
                 not any(st['kind']=='MATH_REVIEW' for st in w.get('steps',[]))):
             open_ids.append(wid)
     return open_ids
@@ -243,8 +277,12 @@ def controller_context(j):
     s=j.verify()
     if not enabled(j,s):return None
     reviews=[]
+    from .math_claim_selection import selected_claim_for_work
     for wid,w in s.work.items():
         aid=verifier_subject(w)
+        if not aid:
+            selection=selected_claim_for_work(j,wid)
+            if selection:aid=selection['asset_id']
         if not aid:continue
         step=next((p for p in w['steps'] if p['kind']=='MATH_REVIEW'),None)
         if step:

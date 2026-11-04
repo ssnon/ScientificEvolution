@@ -362,6 +362,9 @@ def controller_v3(self,ident):
           'assessment_reused':opp_reused}}
     prompt=(CONTROLLER_PROMPT+(E3R1_CONTROLLER_ADDENDUM if j.verify().e3r1_policy else '')+
             '\n'+spe.CONTROLLER_FEEDBACK_ADDENDUM+'\n'+V3_ADVISORY)
+    from e2core import math_claim_selection as _native_claim_selection
+    if _native_claim_selection.controller_context(j) is not None:
+        prompt += '\n'+_native_claim_selection.CONTROLLER_ADDENDUM
     raw,m232_final_controller_call_id,_=assessor_call(self.model,j,'CTRL_'+ident,
         prompt,full,'CONTROLLER',mode=m232_detail_mode)
     control=strict_envelope(raw)

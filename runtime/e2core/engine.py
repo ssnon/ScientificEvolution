@@ -679,6 +679,10 @@ def _external_context(j, tool_capabilities=None):
     math_review_ctx=_native_math_cycle.controller_context(j)
     if math_review_ctx is not None:
         context['native_math_verification_cycle']=math_review_ctx
+    from . import math_claim_selection as _native_claim_selection
+    claim_selection=_native_claim_selection.controller_context(j)
+    if claim_selection is not None:
+        context['native_math_claim_selection']=claim_selection
     context['m23_root_scoped_asset_namespace']=_m23_namespace_context(j,s)
     context['m231_current_root_work_source_contract']=_m231_controller_work_source_contract(j,s)
     diagnostic=_m231_rejected_work_source_diagnostic(j,s)
