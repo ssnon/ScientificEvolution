@@ -182,6 +182,21 @@ def historical_input_compat(mods, target_root):
         if w.get('opportunity_input_ids'):
             from e2core.research_continuity import worker_handoff
             payload['explicit_unregistered_opportunity_handoff'] = worker_handoff(w)
+        # M23.6.1: The legacy HISTORICAL_AI compatibility branch constructs
+        # its own Worker payload. Preserve the exact native Work-scoped
+        # publication/lineage/metadata contracts, which would otherwise be
+        # omitted whenever an imported PEER_ASSET requires this bridge.
+        # The validator remains authoritative. This grants no new sources,
+        # aliases, parents, FRESH inheritance, or scientific permissions.
+        from e2core.engine import _m23_worker_publication_source_contract
+        from e2core.m235_lineage_feedback import own_lineage_feedback
+        from e2core.m236_parent_recovery import (
+            parent_reference_contract, metadata_repair_context)
+        payload['m235_own_lineage_feedback'] = own_lineage_feedback(j, state, wid)
+        payload['m236_parent_reference_contract'] = parent_reference_contract(state, w)
+        payload['m236_metadata_repair_context'] = metadata_repair_context(j, w)
+        payload['m23_asset_publication_source_contract'] = (
+            _m23_worker_publication_source_contract(state, w))
         return payload
 
     mods.spe._ORIGINAL_WORKER_INPUT=compatible_input
