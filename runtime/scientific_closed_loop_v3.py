@@ -175,6 +175,8 @@ def _event_is_scientific(j,event):
 
 
 def should_controller_run(self):
+    from e2core import math_cycle as _native_math_cycle
+    if _native_math_cycle.pending_math_work(self.j):return False
     # Preserve base operational/serial-fair protections and active Worker
     # independence. Only change the frequency of additional reassessment.
     if self.serial_fair and self._uninterpreted_tool_feedback():return False

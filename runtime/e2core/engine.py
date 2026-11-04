@@ -634,6 +634,7 @@ def _external_context(j, tool_capabilities=None):
             recent_evolution_events.append({'event_seq':row['seq'],'kind':row['kind'],
                 'id':p.get('id'), 'work_id':p.get('work_id'), 'outcome':p.get('outcome')})
     recent_evolution_events.reverse()
+    from . import math_cycle as _native_math_cycle
     context={'program':s.program,'problems':list(s.problems.values()),'assets':assets,
         'unreviewed_frontier_events':recent_evolution_events,
         'frontier':{'queued':[w['id'] for w in s.work.values() if w['status']=='QUEUED'],
@@ -675,6 +676,9 @@ def _external_context(j, tool_capabilities=None):
     opportunity_index=opportunities_for_journal(j)
     if opportunity_index:
         context['unregistered_opportunity_index']=concise_index(opportunity_index)
+    math_review_ctx=_native_math_cycle.controller_context(j)
+    if math_review_ctx is not None:
+        context['native_math_verification_cycle']=math_review_ctx
     context['m23_root_scoped_asset_namespace']=_m23_namespace_context(j,s)
     context['m231_current_root_work_source_contract']=_m231_controller_work_source_contract(j,s)
     diagnostic=_m231_rejected_work_source_diagnostic(j,s)
@@ -786,6 +790,7 @@ class Engine:
                 'objective_status':assessment.get('objective_status') if assessment else None,
                 'research_status':assessment.get('research_status') if assessment else None}
     def worker_step(self,wid):
+        from . import math_cycle as _native_math_cycle
         w=self.j.verify().work[wid]
         if w['status']=='QUEUED':self.j.start(wid)
         s=self.j.verify();w=s.work[wid]
@@ -795,6 +800,7 @@ class Engine:
         prior_format_failures=_consecutive_unusable_worker_responses(self.j,w)
         prompt=_worker_input(self.j,wid,'NATIVE_RESEARCH_TOOLS' if self._native_tool_contract else 'CUSTOM_BACKEND_CAPABILITIES_UNDECLARED')
         worker_system=WORKER_PROMPT+(WORKER_FORMAT_RECOVERY_PROMPT if prior_format_failures else '')
+        worker_system,prompt=_native_math_cycle.before_worker_model(self.j,wid,worker_system,prompt)
         text=self.model.call(call_id,'WORKER',wid,worker_system,prompt)
         # Do not select between distinct scientific outputs. Only identical complete
         # JSON repeats may collapse; retain the original authored text in Journal.
@@ -896,6 +902,8 @@ class Engine:
                     continue
                 accepted.append(('ASSET_PUBLISHED',payload))
             for kind,p in accepted:self.j.append(kind,p)
+            _native_math_cycle.on_assets_published(self.j,
+                [p['id'] for kind,p in accepted if kind=='ASSET_PUBLISHED'])
             if rejected or aliases or asset_aliases:
                 self.j.step(wid,'OUTPUT_VALIDATION',{
                     'status':'PARTIALLY_ACCEPTED' if rejected and accepted else ('REJECTED' if rejected else 'IDS_NAMESPACE_RESOLVED'),
@@ -975,6 +983,7 @@ class Engine:
             self.j.finish(wid,'BLOCKED','All proposed metadata rejected; original scientific text retained unaltered')
             final_action='BLOCKED_METADATA'
         elif final_action in ('RETURN','HOLD'):
+            _native_math_cycle.on_verifier_final(self.j,wid,parsed,call_id)
             self.j.finish(wid,final_action,'Worker autonomous decision: '+parsed['scientific_text'][:300])
         return {'work_id':wid,'status':final_action,'published':sum(k=='ASSET_PUBLISHED' for k,_ in accepted), 'rejected_metadata':len(rejected), 'problem_id_mapping':aliases, 'asset_id_mapping':asset_aliases}
     def ready_workers(self,limit=4):
@@ -1039,7 +1048,9 @@ class Engine:
         when no scientifically relevant state change occurred. A tool result
         must first reach its originating Worker (serial fairness invariant).
         """
+        from . import math_cycle as _native_math_cycle
         s=self.j.verify()
+        if _native_math_cycle.pending_math_work(self.j):return False
         if self.serial_fair and self._uninterpreted_tool_feedback():return False
         rows=self.j._events()
         if s.e3r1_policy and any(w['status'] in {'QUEUED','ACTIVE'} for w in s.work.values()):

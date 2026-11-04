@@ -263,9 +263,13 @@ def init(args):
     root.mkdir(parents=True)
     try:
         carry=prepare_clean_portfolio(mods,source,root/'BASE_000')
+        if getattr(args,'math_verification',False):
+            from e2core.math_cycle import enable_on_clean_root
+            enable_on_clean_root(mods.J(root/'BASE_000'))
         manifest={'protocol':PROTOCOL,'root':str(root),'original_source':str(source),
             'source_head':digest(mods,sj), 'P0_sha256':pop.p0hash(ss),
             'generation_zero_base':str(root/'BASE_000'),
+            'math_verification_cycle':bool(getattr(args,'math_verification',False)),
             'scientific_policy':'AUTONOMOUS_EXISTING_V4_V3_CONTROLLER; NO_FORCED_FUSE_OR_WORK',
             'source_work_is_only_historical_not_SILENTLY_FINISHED':True,
             'science_certification':False}
@@ -300,6 +304,9 @@ def create_cycle(mods,root,n,peer_count,source):
                  len(mods.J(Path(root)/'BASE_000')._events()))
         else:
             prepare_clean_portfolio(mods,source,base)
+        if plan_at(root).get('math_verification_cycle',False):
+            from e2core.math_cycle import enable_on_clean_root
+            enable_on_clean_root(mods.J(base))
         b,bs=verify(mods,base)
         if bs.work or bs.model_calls or bs.controller_decisions:fail('CLEAN_BASE_HAS_ACTIVE_WORK')
         peers={}
@@ -595,6 +602,14 @@ def run(args):
                     fail('PEER_OPERATIONAL_PAUSE_NEEDS_REVIEW:'+str(result.get('stop')))
             if any(paid_calls(verify(mods,r)[1])==0 for r in cycle['peers'].values()):
                 fail('PEER_WITHOUT_REAL_MODEL_CALLS_STOP')
+            if m.get('math_verification_cycle',False):
+                from e2core.math_cycle import pending_math_work
+                pending={name:pending_math_work(mods.J(path)) for name,path in cycle['peers'].items()}
+                pending={name:items for name,items in pending.items() if items}
+                if pending:
+                    print(json.dumps({'status':'PEER_MATH_REVIEW_INCOMPLETE_OPERATIONAL_PAUSE',
+                        'pending':pending,'not_scientific_disposition':True}),flush=True)
+                    return
             cycle['stage']='COMBINE';update_cycle(args.experiment,cycle)
         if cycle['stage']=='COMBINE':
             outcome=combine(mods,cycle)
@@ -607,6 +622,13 @@ def run(args):
             if result.get('stop')=='GLOBAL_CALL_BUDGET':return
             if result.get('stop') not in {'CALL_BUDGET','ROOT_CALL_BUDGET','SCIENTIFIC_TERMINAL'}:
                 fail('POPULATION_OPERATIONAL_PAUSE_NEEDS_REVIEW:'+str(result.get('stop')))
+            if m.get('math_verification_cycle',False):
+                from e2core.math_cycle import pending_math_work
+                remaining=pending_math_work(mods.J(cycle['population_root']))
+                if remaining:
+                    print(json.dumps({'status':'POPULATION_MATH_REVIEW_INCOMPLETE_OPERATIONAL_PAUSE',
+                        'pending_work_ids':remaining,'not_scientific_disposition':True}),flush=True)
+                    return
             cycle['stage']='COMPLETE';update_cycle(args.experiment,cycle)
         completed+=1
         print(json.dumps({'status':'POPULATION_CYCLE_RECORDED','generation':cycle['index'],
@@ -659,6 +681,12 @@ def status(args):
                 'disposition':last_disposition(s),
                 'verified_no_unknown_calls':True,'head':digest(mods,j)}
         cycles.append(obj)
+    from e2core import math_cycle as _native_math_cycle
+    for row in cycles:
+        pop_row=row.get('population')
+        if pop_row is not None:
+            cj=mods.J(str(Path(args.experiment)/f"CYCLE_{row['generation']:03d}"/'POPULATION'))
+            pop_row['native_math_verification_cycle']=_native_math_cycle.controller_context(cj)
     output={'protocol':'PERSISTENT_POPULATION_READONLY_AUDIT_V1',
         'original_p0_sha256':m['P0_sha256'],'cycles':cycles,
         'total_new_paid_calls':total_paid_in_experiment(mods,args.experiment),
@@ -689,6 +717,7 @@ def main():
     cli=argparse.ArgumentParser(description=__doc__)
     subs=cli.add_subparsers(dest='command',required=True)
     a=subs.add_parser('init');a.add_argument('--source-root',required=True);a.add_argument('--out',required=True)
+    a.add_argument('--math-verification',action='store_true',help='Opt in to native recursive mathematics verification for NEW roots')
     for cmd in ('preflight','status','run'):
         a=subs.add_parser(cmd);a.add_argument('--experiment',required=True)
         if cmd=='status':a.add_argument('--out')
