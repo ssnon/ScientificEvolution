@@ -13,7 +13,7 @@ Evidence tiers:
  SUPPLEMENT_LINK_METADATA: supplementary references, NOT read by discovery
 """
 from __future__ import annotations
-import datetime, hashlib, io, json, re, ssl, time, urllib.error, urllib.parse, urllib.request, xml.etree.ElementTree as ET
+import datetime, hashlib, io, json, os, re, ssl, time, urllib.error, urllib.parse, urllib.request, xml.etree.ElementTree as ET
 from .oa_pdf import read_from_openalex_record, public_pdf_get
 
 OA_BASE='https://www.ebi.ac.uk/europepmc/webservices/rest'
@@ -46,7 +46,17 @@ def _network(url):
     if u.hostname=='arxiv.org' and not u.path.startswith('/pdf/'):
         raise RetrievalError('BAD_ARXIV_ENDPOINT')
     opener=urllib.request.build_opener(_NoRedirect,urllib.request.HTTPSHandler(context=ssl.create_default_context()))
-    req=urllib.request.Request(url,headers={'User-Agent':'FAKG-AIScientist-R6/1.0 (academic evidence retrieval)', 'Accept':'application/json, application/xml, text/xml, application/pdf'})
+    headers={'User-Agent':'FAKG-AIScientist-R6/1.0 (academic evidence retrieval)',
+        'Accept':'application/json, application/xml, text/xml, application/pdf'}
+    # Optional provider credential is server-side only: NEVER put it in a URL,
+    # Source record, trace, Journal event, or model context.
+    if u.hostname=='api.openalex.org':
+        key=os.environ.get('OPENALEX_API_KEY','').strip()
+        if key:
+            if len(key)>512 or '\r' in key or '\n' in key:
+                raise RetrievalError('INVALID_OPENALEX_KEY_FORMAT')
+            headers['Authorization']='Bearer '+key
+    req=urllib.request.Request(url,headers=headers)
     with opener.open(req,timeout=18) as f:
         if f.status!=200:raise RetrievalError('HTTP_NON_200')
         buf=f.read(MAX_CONTENT+1)
@@ -449,16 +459,27 @@ def research_literature(args,*,transport=None,sleeper=None):
         try:
             out=ACTIONS[action](args,retrieve)
         except ProviderUnavailable as err:
-            if action=='search' and args.get('provider','openalex')=='europepmc' and err.http_status in TRANSIENT_HTTP:
-                fallback_args={**args,'provider':'openalex'}
+            # A single cross-provider attempt is recovery from an API outage,
+            # not a scientific decision or a second model-generated search.
+            # A 429 may signal per-second throttling or daily budget exhaustion.
+            requested=args.get('provider','openalex')
+            alternative=({'openalex':'europepmc','europepmc':'openalex'}
+                         .get(requested) if action=='search' and
+                         (err.http_status in TRANSIENT_HTTP or err.http_status==429
+                          or err.http_status is None) else None)
+            if alternative:
+                fallback_args={**args,'provider':alternative}
                 try:
                     out=_search(fallback_args,retrieve)
                 except (RetrievalError,OSError,ValueError,UnicodeDecodeError,TypeError,KeyError,ET.ParseError,json.JSONDecodeError) as fb:
-                    # Both attempts remain in trace, error is not scientific evidence.
+                    # Both attempts remain in trace. Failed search is NOT a null.
                     raise fb from err
-                out.update({'requested_provider':'europepmc','fallback_provider':'openalex',
-                    'fallback_reason':'EUROPEPMC_HTTP_'+str(err.http_status),
-                    'fallback_original_url':err.url,'fallback_is_bibliographic_only':True,
+                out.update({'requested_provider':requested,
+                    'fallback_provider':alternative,
+                    'fallback_reason':requested.upper()+'_HTTP_'+str(err.http_status)
+                        if err.http_status is not None else requested.upper()+'_NETWORK_UNAVAILABLE',
+                    'fallback_original_url':err.url,
+                    'fallback_is_bibliographic_only':True,
                     'automatic_fallback':True})
             else:raise
         out['retrieval_attempts']=trace
