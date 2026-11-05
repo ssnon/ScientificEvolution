@@ -340,7 +340,223 @@ def update_cycle(root,cycle):atomic_write(cycle_file(root,cycle['index']),cycle)
 def assert_source_stable(mods,cycle):
     j,s=verify(mods,cycle['base'])
     if digest(mods,j)!=cycle['base_head']:fail('BASE_CHECKPOINT_MUTATED')
+    for name,expected in cycle.get('external_peer_snapshot_heads',{}).items():
+        if name not in cycle['peers']:fail('UNKNOWN_FROZEN_PEER_SNAPSHOT:'+name)
+        donor,_=verify(mods,cycle['peers'][name])
+        if digest(mods,donor)!=expected:fail('FROZEN_PEER_SNAPSHOT_CHANGED:'+name)
     return j,s
+
+
+
+def _verified_peer_work_frontier(mods,j,peer,peer_root,import_receipt):
+    """Transfer an exact donor Work-status SNAPSHOT, never executable Work.
+
+    Model-authored assets stay provisional. Incomplete verification is NOT a
+    scientific HOLD, a null result, a completed review, or a new calculation.
+    """
+    from e2core.math_cycle import pending_math_work
+    donor,ds=verify(mods,peer_root)
+    head=digest(mods,donor)
+    if head['head_sha256']!=import_receipt['head_sha256']:
+        fail('PEER_HANDOFF_HEAD_MISMATCH:'+peer)
+    if pop.p0hash(ds)!=pop.p0hash(j.verify()):
+        fail('PEER_HANDOFF_P0_MISMATCH:'+peer)
+    source_id='SRC_PEER_DECISION_'+peer
+    s=j.verify()
+    if source_id not in s.sources or import_receipt['decision_receipt']!=source_id:
+        fail('PEER_HANDOFF_DECISION_RECEIPT_MISSING:'+peer)
+    decision=json.loads(j.raw(s.sources[source_id]['blob']))
+    translations=decision['asset_id_translation']
+    math_pending=set(pending_math_work(donor))
+    if math_pending-set(ds.work):
+        fail('PEER_HANDOFF_UNKNOWN_MATH_WORK:'+peer)
+    unfinished=[]
+    for wid,w in ds.work.items():
+        if w['status'] not in {'ACTIVE','QUEUED','DEFERRED'} and wid not in math_pending:
+            continue
+        original=list(w.get('published',[]))
+        mapped=[translations.get(a,a) for a in original]
+        if not all(a in s.assets for a in mapped):
+            fail('PEER_HANDOFF_MAPPED_ASSET_NOT_REGISTERED:'+peer+':'+wid)
+        unfinished.append({
+            'original_work_id':wid,'status_at_checkpoint':w['status'],
+            'outcome_at_checkpoint':w.get('outcome'),
+            'mode':w.get('mode'),'operation':w.get('operation'),
+            'question':w.get('question'),
+            'original_asset_input_ids':list(w.get('asset_input_ids',[])),
+            'original_published_asset_ids':original,
+            'mapped_current_root_asset_ids':mapped,
+            'step_count_at_checkpoint':len(w.get('steps',[])),
+            'math_verification_pending_at_checkpoint':wid in math_pending,
+            'historical_not_runnable_current_root':True,
+            'not_a_math_certificate_or_scientific_hold':True})
+    if digest(mods,donor)!=head:
+        fail('PEER_HANDOFF_DONOR_CHANGED_DURING_SNAPSHOT:'+peer)
+    receipt={'kind':'VERIFIED_PEER_UNFINISHED_WORK_FRONTIER',
+        'peer_syn':peer,'original_peer_root':str(donor.root),
+        'original_peer_head':head,'decision_source_id':source_id,
+        'unfinished_works':unfinished,
+        'pending_math_review_ids':sorted(math_pending),
+        'historical_work_not_executable_in_population':True,
+        'population_autonomously_selects_any_follow_up':True,
+        'no_automatic_rejection_certification_or_completion':True,
+        'not_a_primary_source_or_new_scientific_evidence':True,
+        'new_model_calls':0,'new_science_tool_executions':0}
+    sid='SRC_PEER_WORK_FRONTIER_'+peer
+    # Match the existing native historical-source reader shape; never promote
+    # status to primary evidence or manufacture a completed tool result.
+    record={**receipt,'ref':str(donor.root)+'#UNFINISHED_WORK_FRONTIER',
+        'science':receipt,
+        'tool_result':{'status':'HISTORICAL_WORK_STATUS_ONLY_NO_NEW_EXECUTION'},
+        'science_sha256':mods.sha(mods.canon(receipt))}
+    j.add_source(sid,'HISTORICAL_AI',record,
+        'Verified PEER unfinished Work checkpoint, including unresolved mathematics; historical status, not completed science')
+    return {'peer':peer,'source_id':sid,
+        'unfinished_work_count':len(unfinished),
+        'pending_math_count':len(math_pending),'original_peer_head':head}
+
+
+def _verify_snapshot_external_source_pin(source_experiment):
+    """Verify original V1.1 source bytes using its ORIGINAL repo, not V1.2."""
+    pinfile=source_experiment/'NATIVE_RUNTIME_SOURCE_PIN.json'
+    if not pinfile.is_file():fail('SNAPSHOT_ORIGINAL_PIN_MISSING')
+    pin=jload(pinfile)
+    if pin.get('protocol')!='M16_NATIVE_EXECUTION_SOURCE_V1':
+        fail('SNAPSHOT_ORIGINAL_PIN_PROTOCOL_MISMATCH')
+    oldrepo=Path(pin.get('repository','')).expanduser().resolve()
+    if not oldrepo.is_dir():fail('SNAPSHOT_ORIGINAL_SOURCE_WORKTREE_MISSING')
+    paths=pin.get('files')
+    if not isinstance(paths,dict) or not paths:fail('SNAPSHOT_ORIGINAL_PIN_FILES_MISSING')
+    actual={}
+    for folder in ('runtime','AUTONOMOUS_SCIENTIFIC_EVOLUTION_20261029'):
+        for file in sorted((oldrepo/folder).rglob('*.py')):
+            if file.is_symlink():fail('SNAPSHOT_ORIGINAL_SOURCE_SYMLINK')
+            actual[file.relative_to(oldrepo).as_posix()]=hashlib.sha256(file.read_bytes()).hexdigest()
+    if paths!=actual:fail('SNAPSHOT_ORIGINAL_NATIVE_SOURCE_PIN_MISMATCH')
+    return {'original_source_worktree':str(oldrepo),
+        'verified_file_count':len(actual),
+        'original_pin_sha256':hashlib.sha256(pinfile.read_bytes()).hexdigest()}
+
+
+def init_peer_snapshot(args):
+    """No-paid, no-replay continuation using two frozen V1.1 donor PEERs.
+
+    The V1.1 journals remain in their original pinned experiment. A NEW V1.2
+    Population imports them after an exact source and Journal-head audit.
+    """
+    mods=pop.gen.modules()
+    old_root=Path(args.source_experiment).expanduser().resolve()
+    new_root=Path(args.out).expanduser().resolve()
+    if new_root.exists():fail('SNAPSHOT_DESTINATION_ALREADY_EXISTS')
+    old_plan=plan_at(old_root)
+    if not old_plan.get('math_verification_cycle',False):
+        fail('SNAPSHOT_ORIGINAL_NOT_MATH_ENABLED')
+    old_cycle=latest_cycle(old_root)
+    if old_cycle is None or old_cycle['index']!=0 or old_cycle['stage']!='PEERS':
+        fail('SNAPSHOT_EXPECTS_V11_CYCLE_ZERO_PEERS')
+    if Path(old_cycle['population_root']).exists():
+        fail('SNAPSHOT_ORIGINAL_POPULATION_ALREADY_EXISTS')
+    if sorted(old_cycle['peers'])!=['SYN_01','SYN_02']:
+        fail('SNAPSHOT_EXPECTS_TWO_NAMED_PEERS')
+    original_pin=_verify_snapshot_external_source_pin(old_root)
+    old_base,old_bs=assert_source_stable(mods,old_cycle)
+    source_base,source_bs=verify(mods,old_plan['generation_zero_base'])
+    if old_bs.work or old_bs.model_calls or old_bs.controller_decisions:
+        fail('SNAPSHOT_SOURCE_BASE_NOT_CLEAN')
+    if source_bs.work or source_bs.model_calls or source_bs.controller_decisions:
+        fail('SNAPSHOT_SOURCE_GEN0_BASE_NOT_CLEAN')
+    if pop.p0hash(old_bs)!=old_plan['P0_sha256'] or pop.p0hash(source_bs)!=old_plan['P0_sha256']:
+        fail('SNAPSHOT_ORIGINAL_P0_MISMATCH')
+    before_base=digest(mods,old_base)
+    before_zero=digest(mods,source_base)
+    snapshots={}
+    for name,path in old_cycle['peers'].items():
+        donor,ds=verify(mods,path)
+        if pop.p0hash(ds)!=old_plan['P0_sha256'] or not ds.controller_decisions:
+            fail('SNAPSHOT_UNVERIFIED_PEER:'+name)
+        if not any(c['state']=='SAVED' and c.get('actor')=='CONTROLLER' for c in ds.model_calls.values()):
+            fail('SNAPSHOT_PEER_HAS_NO_SAVED_CONTROLLER:'+name)
+        if not set(old_bs.assets).issubset(ds.assets):fail('SNAPSHOT_PEER_MISSING_BASE_ASSETS:'+name)
+        snapshots[name]=digest(mods,donor)
+    new_root.mkdir(parents=True)
+    try:
+        newzero=new_root/'BASE_000'
+        pop.clone_at_checkpoint(mods,source_base.root,newzero,before_zero['events'],before_zero['head_sha256'])
+        folder=new_root/'CYCLE_000'
+        folder.mkdir()
+        newbase=folder/'BASE'
+        pop.clone_at_checkpoint(mods,old_base.root,newbase,before_base['events'],before_base['head_sha256'])
+        basecheck,bs=verify(mods,newbase)
+        if digest(mods,basecheck)!=before_base or pop.p0hash(bs)!=old_plan['P0_sha256']:
+            fail('SNAPSHOT_CLONED_BASE_MISMATCH')
+        manifest={**old_plan,'root':str(new_root),
+            'generation_zero_base':str(newzero),
+            'scientific_policy':'UNCHANGED_NATIVE_RESEARCH; VERIFIED_FROZEN_V11_PEER_SNAPSHOT_HANDOFF',
+            'no_new_peer_research_in_snapshot':True,
+            'math_verification_cycle':True,
+            'not_scientific_certification':True}
+        newwrite(new_root/'persistent.json',manifest)
+        new_cycle={**old_cycle,'base':str(newbase),'base_head':before_base,
+            'peers':{name:str(Path(path).resolve()) for name,path in old_cycle['peers'].items()},
+            'population_root':str(folder/'POPULATION'),
+            'stage':'COMBINE',
+            'external_peer_snapshot_heads':snapshots,
+            'source_snapshot_no_new_model_calls':True,
+            'no_automatic_completion_of_unfinished_peer_work':True}
+        newwrite(folder/'cycle.json',new_cycle)
+        newwrite(new_root/'PEER_SNAPSHOT_IMPORT_RECEIPT.json',{
+            'protocol':'V12_EXTERNAL_V11_FROZEN_PEER_SNAPSHOT_V1',
+            'source_experiment':str(old_root),
+            'source_persistent_sha256':hashlib.sha256((old_root/'persistent.json').read_bytes()).hexdigest(),
+            'original_runtime_pin':original_pin,
+            'original_generation_zero_head':before_zero,
+            'original_cycle_base_head':before_base,
+            'peer_heads':snapshots,'original_p0_sha256':old_plan['P0_sha256'],
+            'new_model_calls':0,'new_tool_executions':0,'no_scientific_selection_during_transfer':True,
+            'unfinished_work_will_be_preserved_as_history_not_current_work':True,
+            'science_certified':False})
+        # New root must pin the new repo's Python bytes, never edit old pins.
+        pop.gen.pin_native_source(new_root)
+        pop.gen.verify_runtime_source(mods,newbase)
+        if digest(mods,old_base)!=before_base or digest(mods,source_base)!=before_zero:
+            fail('SNAPSHOT_UPSTREAM_BASE_CHANGED_DURING_IMPORT')
+        for name,path in old_cycle['peers'].items():
+            dj,_=verify(mods,path)
+            if digest(mods,dj)!=snapshots[name]:
+                fail('SNAPSHOT_PEER_CHANGED_DURING_IMPORT:'+name)
+    except BaseException:
+        shutil.rmtree(new_root)
+        raise
+    print(json.dumps({'status':'FROZEN_V11_PEER_SNAPSHOT_PREPARED_NO_PAID',
+        'new_experiment':str(new_root),'source_untouched':True,
+        'new_model_calls':0,'phase':'COMBINE',
+        'historical_peer_call_count':sum(paid_calls(verify(mods,r)[1]) for r in old_cycle['peers'].values()),
+        'scientific_certification':False},ensure_ascii=False,indent=2))
+
+
+def combine_snapshot(args):
+    """Commit ONLY no-paid native COMBINE after exact source/donor checks."""
+    mods=pop.gen.modules()
+    m=plan_at(args.experiment)
+    cycle=latest_cycle(args.experiment)
+    if not cycle or cycle['stage']!='COMBINE' or not cycle.get('external_peer_snapshot_heads'):
+        fail('NOT_AT_FROZEN_SNAPSHOT_COMBINE_BOUNDARY')
+    if not m.get('math_verification_cycle',False):fail('MATH_CYCLE_NOT_ENABLED')
+    pop.gen.verify_runtime_source(mods,cycle['base'])
+    assert_source_stable(mods,cycle)
+    import_receipt=jload(Path(args.experiment).expanduser().resolve()/'PEER_SNAPSHOT_IMPORT_RECEIPT.json')
+    if import_receipt.get('protocol')!='V12_EXTERNAL_V11_FROZEN_PEER_SNAPSHOT_V1':
+        fail('SNAPSHOT_IMPORT_RECEIPT_INVALID')
+    prior_pin=_verify_snapshot_external_source_pin(
+        Path(import_receipt['source_experiment']).expanduser().resolve())
+    if prior_pin!=import_receipt['original_runtime_pin']:
+        fail('SNAPSHOT_ORIGINAL_RUNTIME_PIN_CHANGED_BEFORE_COMBINE')
+    result=combine(mods,cycle)
+    cycle['stage']='POPULATION'
+    update_cycle(args.experiment,cycle)
+    print(json.dumps({'status':'SNAPSHOT_COMBINE_FINISHED_NO_PAID',
+        'combine_result':result,'phase':'POPULATION',
+        'new_model_calls':0,'scientific_certification':False},ensure_ascii=False,indent=2))
 
 
 @contextlib.contextmanager
@@ -407,6 +623,15 @@ def population_science_bridge(mods,root,peer_names):
                 'opportunities_total':len(opps),'recent_opportunities':opps[-2:],
                 'asset_id_translation':report['asset_id_translation'],
                 'all_peer_assets':report['new_assets']})
+            frontier_sid='SRC_PEER_WORK_FRONTIER_'+name
+            if frontier_sid in ss.sources:
+                frontier=json.loads(j.raw(ss.sources[frontier_sid]['blob']))
+                if (frontier.get('peer_syn')!=name or
+                        frontier.get('original_peer_head',{}).get('head_sha256')!=report['head_sha256']):
+                    fail('PEER_FRONTIER_SOURCE_MISMATCH:'+name)
+                reports[-1]['historical_work_frontier_source_id']=frontier_sid
+                reports[-1]['unresolved_peer_works']=frontier['unfinished_works']
+                reports[-1]['pending_math_review_ids']=frontier['pending_math_review_ids']
         prior=ss.sources.get('SRC_PREVIOUS_POPULATION_STATUS')
         if prior:
             past=json.loads(j.raw(prior['blob']))
@@ -489,6 +714,8 @@ def combine(mods,cycle,blocked_peers=None):
                 # verified worker steps, provenance and parent mapping.
                 report=pop.import_peer(mods,j,bs,peer,path)
             reports.append(report)
+            report['unfinished_work_frontier']=_verified_peer_work_frontier(
+                mods,j,peer,path,report)
         all_ids=list(j.verify().assets)
         atomic_write(stage/'FEEDBACK_PREPARE_MANIFEST.json',{
             'selected_assets':all_ids,
@@ -607,9 +834,9 @@ def run(args):
                 pending={name:pending_math_work(mods.J(path)) for name,path in cycle['peers'].items()}
                 pending={name:items for name,items in pending.items() if items}
                 if pending:
-                    print(json.dumps({'status':'PEER_MATH_REVIEW_INCOMPLETE_OPERATIONAL_PAUSE',
-                        'pending':pending,'not_scientific_disposition':True}),flush=True)
-                    return
+                    print(json.dumps({'status':'PEER_MATH_REVIEW_UNFINISHED_WILL_TRANSFER',
+                        'pending':pending,'work_not_completed_or_certified':True,
+                        'not_scientific_disposition':True}),flush=True)
             cycle['stage']='COMBINE';update_cycle(args.experiment,cycle)
         if cycle['stage']=='COMBINE':
             outcome=combine(mods,cycle)
@@ -626,9 +853,10 @@ def run(args):
                 from e2core.math_cycle import pending_math_work
                 remaining=pending_math_work(mods.J(cycle['population_root']))
                 if remaining:
-                    print(json.dumps({'status':'POPULATION_MATH_REVIEW_INCOMPLETE_OPERATIONAL_PAUSE',
-                        'pending_work_ids':remaining,'not_scientific_disposition':True}),flush=True)
-                    return
+                    print(json.dumps({'status':'POPULATION_MATH_REVIEW_UNFINISHED_RETAINED_AS_HISTORY',
+                        'pending_work_ids':remaining,
+                        'not_scientific_disposition':True,
+                        'no_automatic_math_certification':True}),flush=True)
             cycle['stage']='COMPLETE';update_cycle(args.experiment,cycle)
         completed+=1
         print(json.dumps({'status':'POPULATION_CYCLE_RECORDED','generation':cycle['index'],
@@ -718,6 +946,9 @@ def main():
     subs=cli.add_subparsers(dest='command',required=True)
     a=subs.add_parser('init');a.add_argument('--source-root',required=True);a.add_argument('--out',required=True)
     a.add_argument('--math-verification',action='store_true',help='Opt in to native recursive mathematics verification for NEW roots')
+    a=subs.add_parser('init-peer-snapshot')
+    a.add_argument('--source-experiment',required=True);a.add_argument('--out',required=True)
+    a=subs.add_parser('combine-snapshot');a.add_argument('--experiment',required=True)
     for cmd in ('preflight','status','run'):
         a=subs.add_parser(cmd);a.add_argument('--experiment',required=True)
         if cmd=='status':a.add_argument('--out')
@@ -736,7 +967,9 @@ def main():
             a.add_argument('--science-wall-seconds',type=int,default=160)
     args=cli.parse_args()
     try:
-        {'init':init,'preflight':preflight,'status':status,'run':run}[args.command](args)
+        {'init':init,'init-peer-snapshot':init_peer_snapshot,
+         'combine-snapshot':combine_snapshot,
+         'preflight':preflight,'status':status,'run':run}[args.command](args)
     except Exception as e:
         print(json.dumps({'status':'OPERATIONAL_ERROR_NOT_SCIENTIFIC_HOLD',
             'error_type':type(e).__name__,'detail':str(e)},ensure_ascii=False),file=sys.stderr)
