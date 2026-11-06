@@ -73,8 +73,19 @@ def make_lineage_journal():
     state=SimpleNamespace(
         work={w['id']:w,fw['id']:fw},
         sources={VALID_SOURCE:{'kind':'EXTERNAL_AUDIT'}},
-        assets={'A_ion_gated_orientation_001': {'source_ids':[VALID_SOURCE]},
-                'A_order_sensitive_hydration_gate_004':{'source_ids':[VALID_SOURCE]}},
+        assets={
+            'A_ion_gated_orientation_001': {
+                'id': 'A_ion_gated_orientation_001',
+                'kind': 'HYPOTHESIS',
+                'source_ids': [VALID_SOURCE],
+            },
+            'A_order_sensitive_hydration_gate_004': {
+                'id': 'A_order_sensitive_hydration_gate_004',
+                'kind': 'HYPOTHESIS',
+                'source_ids': [VALID_SOURCE],
+            },
+        },
+        tool_results={},
         r5_policy=True,
     )
     class Journal:
