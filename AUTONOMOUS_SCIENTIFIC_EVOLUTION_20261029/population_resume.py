@@ -106,7 +106,7 @@ def historical_input_compat(mods, target_root):
     ref/science/tool_result/science_sha256. Population transfer instead stores
     original_root/original_asset. Build an authorized read-only legacy view.
     """
-    from e2core.research_context import research_worker_context
+    from e2core.research_context import research_worker_context, observed_work_outcomes
     original = mods.spe._ORIGINAL_WORKER_INPUT
     target = Path(target_root).resolve()
 
@@ -193,6 +193,9 @@ def historical_input_compat(mods, target_root):
         from e2core.m236_parent_recovery import (
             parent_reference_contract, metadata_repair_context)
         payload['m235_own_lineage_feedback'] = own_lineage_feedback(j, state, wid)
+        # M25: the historical PEER compatibility branch must not drop the
+        # same Work-scoped factual outcome visible in the native input.
+        payload['m25_own_observed_work_outcome'] = observed_work_outcomes(j, only_work_id=wid)[0]
         payload['m236_parent_reference_contract'] = parent_reference_contract(state, w)
         payload['m236_metadata_repair_context'] = metadata_repair_context(j, w)
         payload['m23_asset_publication_source_contract'] = (

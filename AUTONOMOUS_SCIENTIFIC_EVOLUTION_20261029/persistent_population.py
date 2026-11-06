@@ -274,6 +274,11 @@ def init(args):
             'source_work_is_only_historical_not_SILENTLY_FINISHED':True,
             'science_certification':False}
         newwrite(root/'persistent.json',manifest)
+        # The ordinary init path must pin the exact new Native source,
+        # just as the frozen PEER snapshot path already does.
+        # Historical source roots are NOT repinned or modified.
+        pop.gen.pin_native_source(root)
+        pop.gen.verify_runtime_source(mods,root/'BASE_000')
         print(json.dumps({'status':'PERSISTENT_POPULATION_PREPARED_NO_PAID',
             'root':str(root),'first_base':str(root/'BASE_000'),
             'carried_science_assets':carry['source_assets'],
