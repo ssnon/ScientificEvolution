@@ -1,3 +1,18 @@
+<!-- M24_OUTCOME_2026_11_06_READ_FIRST -->
+## M24 retrospective outcome — 2026-11-06 (read before the original proposal)
+
+**Status of the original M24 proposal below:** executed and subsequently audited, **partially achieved**. The original proposal's `not yet implemented` label is retained below as a historical statement from 2026-11-05 and must not be mistaken for today's status. The full documented evaluation is `M24_INTEGRATED_SCIENCE_AUDIT_20261106.md`; the next direction is `M25_LEVEL_II_SCIENTIFIC_CONVERGENCE_PLAN_20261106.md`.
+
+- The 2-generation experiment completed its **operational** budget: 192 saved new calls, six research roots, 46 live research assets. `COMPLETE` does not mean scientific completion; P0 remained unresolved.
+- The principal **selected primary-source-inspection -> actual primary-body acquisition** goal remained unmet: 13 metadata returns but zero newly read primary full texts in six roots, and G0 Population's new source-audit Works made no new tool calls. A numeric-to-`PMC`-prefixed PMCID mismatch was observed; other retrieval failures must not be called absence of literature.
+- There was **genuine, narrowly bounded computational progress**: one executed Raman-pumping parameter screen constrained high steady-state occupation under explicitly hypothetical parameters, and one rejected verified arithmetic request was repaired and successfully rerun to bound a dipolar two-state equilibrium-energy mechanism. Neither is a measured SERS mechanism nor by itself a complete Level II proposal.
+- **Model-mediated math self-correction** found and rectified an initially accepted 2-state generator-commutator error; the review system remains fallible, and correction adoption across subsequent generations is not proven.
+- Peer transmission and historical carry were preserved, but substantive scientific comparison/use of new peer assets and development of **new G0 discoveries** in G1 were **not demonstrated**. No requirement for artificial peer-parent links is inferred.
+- **Interpretation corrected:** the target all along is an *experiment-worthy pre-experimental Level II candidate or a defensible scientific negative/defer*, **not** performance of the experiment, collection of new laboratory data, or confirmation of a unique physical mechanism. Prior art and physical constraints may be necessary to *justify an experiment proposal*; empirical confirmation is a later-stage objective.
+- Next emphasis is not a mandate for flawless agents or completion of every Work: ensure fallible researchers' actual evidence, limitations, mathematical corrections and strong-null comparisons can combine into a coherent scientific case, or a justified reason not to proceed. Preserve the scientist's autonomy to pivot, question assumptions, defer and reject.
+
+---
+
 # M24 — Research Execution, Evidence Truth and Scientific Synthesis
 
 **Proposed:** 2026-11-05 (KST)  
