@@ -27,6 +27,16 @@ not the product objective.
 * It is valid to HOLD or change direction when research value is low. No fixed
   generation, worker, or step quota is a scientific success criterion.
 
+## Pre-experimental Level II boundary and a fallible research community
+
+The **current target is a pre-experimental, independently reviewable hypothesis or a defensible scientific negative/defer**, not an experimentally confirmed SERS mechanism. Real wet-lab experiments, new measurements, and causal proof from newly collected data are **not prerequisites** to reach the intended Level II research milestone. Pre-experimental work may nevertheless require genuine calculations/simulations, primary prior-art inspection, physical feasibility bounds and discriminating measurement designs. Known data and literature constrain the *plausibility and novelty of the proposal*; they need not already prove the proposal true.
+
+A **Level II candidate** is a coherent scientific case, not a collection of individually impressive claims: (1) a precise, distinctive causal or predictive hypothesis; (2) internally consistent assumptions and mathematical/physical feasibility within explicitly defended regimes; (3) comparisons to strong *admissible* competing nulls, including overlap and non-identifiability boundaries; (4) honest, appropriately scoped prior-art and evidence status; and (5) feasible observations/interventions, predicted outcomes and genuine falsifiers that would make the proposed experiment worth independent human review. Novelty, feasibility and discriminating power are claims to support, not labels conferred by an agent or a prescribed threshold. Independent reviewers may reject the candidate. A rigorous scoped negative, impossibility/identifiability limit, or justified HOLD is also genuine scientific progress; it should not be cosmetically relabeled Level II.
+
+**Individual agents are allowed to fail.** A math reviewer may miss a flaw; a literature worker may be unable to acquire a full text; a calculation may be rejected or a hypothesis falsified; a generation may pivot or make no progress. The system must preserve what was *actually* attempted, returned and learned; distinguish a failed assigned task from a potentially useful alternative scientific contribution; keep uncertainties/counterarguments available for correction; and avoid treating mere agreement, review count, asset ancestry, metadata, process-level execution or Work `DONE` as evidence of scientific truth. No mandatory positive discovery, per-agent success rate, depth quota, tool count, peer-parent link or fixed number of generations is a scientific policy.
+
+**The system-level question** is whether independent, imperfect researchers can turn proposals, external constraints, criticisms and negative results into increasingly defensible *experiment-worthy* knowledge over time. Compare claims with actual evidence, including whether corrected limitations affected later scientific decisions; permit justified independent departures instead of enforcing convergence or forced use of any particular previous result.
+
 ## Invariants
 
 * Preserve original P0 and research provenance. Append-only journals and saved
