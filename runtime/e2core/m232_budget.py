@@ -21,7 +21,10 @@ DATABASE_NAME = '.M232_DEV_BUDGET.sqlite3'
 def _experiment_path(journal_root):
     p = Path(journal_root).expanduser().resolve()
     for candidate in (p, *p.parents):
-        if (candidate / 'autonomous.json').is_file():
+        # Persistent Population uses persistent.json, whereas earlier autonomous
+        # experiments use autonomous.json. Both are native experiment roots.
+        if ((candidate / 'autonomous.json').is_file()
+                or (candidate / 'persistent.json').is_file()):
             return candidate
     return None
 
