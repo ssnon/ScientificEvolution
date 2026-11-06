@@ -49,9 +49,18 @@ class TestM25TransferGate(unittest.TestCase):
             j=EvolutionJournal(src)
             j.init('P0 scientific hypothesis to be carried without execution')
             new=Path(td)/'new_experiment'
-            args=SimpleNamespace(source_root=str(src),out=str(new),math_verification=False)
-            with contextlib.redirect_stdout(io.StringIO()):
-                pp.init(args)
+            from e2core.activation_contract import PROTOCOL, DEFAULTS
+            profile_file=Path(td)/'explicit_activation.json'
+            profile_file.write_text(json.dumps({
+                'protocol':PROTOCOL,'model':'openai/gpt-5.6-luna',
+                'purpose':'Synthetic root source pin regression',
+                'features':dict(DEFAULTS)}))
+            args=SimpleNamespace(source_root=str(src),out=str(new),
+                math_verification=False,activation_profile=str(profile_file))
+            from unittest.mock import patch
+            with patch.dict('os.environ', dict(DEFAULTS)):
+                with contextlib.redirect_stdout(io.StringIO()):
+                    pp.init(args)
             pin=new/gen.NATIVE_PIN_NAME
             self.assertTrue(pin.is_file(),'normal init must pin its own new source root')
             content=json.loads(pin.read_text())

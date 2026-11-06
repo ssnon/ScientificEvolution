@@ -15,6 +15,8 @@ import population_run as pop
 import population_resume as compat
 from e2core.research_continuity import opportunities_for_journal
 from e2core.peer_rejected_continuity import collect_verified_peer_rejections
+from e2core.activation_contract import (read_profile as read_activation_profile,
+    digest as activation_digest, check_activation)
 
 PROTOCOL='SCIENTIFIC_PERSISTENT_POPULATION_V1'
 TERMINAL={'HOLD_WITH_RATIONALE','SCOPED_NEGATIVE','REVIEW_WORTHY_CANDIDATE'}
@@ -255,6 +257,8 @@ def prepare_clean_portfolio(mods,source_root,dest):
 
 
 def init(args):
+    profile=read_activation_profile(getattr(args,'activation_profile',None))
+    check_activation(profile, require_budget=False)
     mods=pop.gen.modules()
     source=Path(args.source_root).expanduser().resolve()
     sj,ss=verify(mods,source)
@@ -270,6 +274,7 @@ def init(args):
             'source_head':digest(mods,sj), 'P0_sha256':pop.p0hash(ss),
             'generation_zero_base':str(root/'BASE_000'),
             'math_verification_cycle':bool(getattr(args,'math_verification',False)),
+            'activation_profile':profile,'activation_profile_sha256':activation_digest(profile),
             'scientific_policy':'AUTONOMOUS_EXISTING_V4_V3_CONTROLLER; NO_FORCED_FUSE_OR_WORK',
             'source_work_is_only_historical_not_SILENTLY_FINISHED':True,
             'science_certification':False}
@@ -453,6 +458,8 @@ def init_peer_snapshot(args):
     old_root=Path(args.source_experiment).expanduser().resolve()
     new_root=Path(args.out).expanduser().resolve()
     if new_root.exists():fail('SNAPSHOT_DESTINATION_ALREADY_EXISTS')
+    profile=read_activation_profile(getattr(args,'activation_profile',None))
+    check_activation(profile, require_budget=False)
     old_plan=plan_at(old_root)
     if not old_plan.get('math_verification_cycle',False):
         fail('SNAPSHOT_ORIGINAL_NOT_MATH_ENABLED')
@@ -499,6 +506,7 @@ def init_peer_snapshot(args):
             'scientific_policy':'UNCHANGED_NATIVE_RESEARCH; VERIFIED_FROZEN_V11_PEER_SNAPSHOT_HANDOFF',
             'no_new_peer_research_in_snapshot':True,
             'math_verification_cycle':True,
+            'activation_profile':profile,'activation_profile_sha256':activation_digest(profile),
             'not_scientific_certification':True}
         newwrite(new_root/'persistent.json',manifest)
         new_cycle={**old_cycle,'base':str(newbase),'base_head':before_base,
@@ -744,6 +752,8 @@ def combine(mods,cycle,blocked_peers=None):
 
 
 def budgeted_drive(mods,root,args,total_before,mode,peer_names=()):
+    check_activation(plan_at(args.experiment), model=args.model,
+                     experiment=args.experiment, require_budget=True)
     j,s=verify(mods,root)
     target=args.peer_calls if mode=='peer' else args.population_calls
     left=target-paid_calls(s)
@@ -791,7 +801,9 @@ def run(args):
             1<=args.peer_calls<=200 and 1<=args.population_calls<=200 and
             1<=args.max_total_new_calls<=10000 and args.slice_budget>=1):
         fail('INVALID_OPERATIONAL_EXECUTION_LIMIT')
-    mods=pop.gen.modules();m=plan_at(args.experiment)
+    m=plan_at(args.experiment)
+    check_activation(m, model=args.model, experiment=args.experiment, require_budget=True)
+    mods=pop.gen.modules()
     before=total_paid_in_experiment(mods,args.experiment)
     completed=0
     while completed<args.max_cycles:
@@ -929,7 +941,17 @@ def status(args):
 
 
 def preflight(args):
-    mods=pop.gen.modules();m=plan_at(args.experiment)
+    m=plan_at(args.experiment)
+    if 'activation_profile' in m:
+        activation=check_activation(
+            m, experiment=args.experiment, require_budget=True
+        )
+    else:
+        activation={
+            'status':'LEGACY_UNPROFILED_READONLY',
+            'paid_run_requires_new_profiled_root':True,
+        }
+    mods=pop.gen.modules()
     j,s=verify(mods,m['generation_zero_base'])
     if pop.p0hash(s)!=m['P0_sha256']:fail('P0_CHANGED')
     if s.work or s.controller_decisions or s.model_calls:fail('BASE_NOT_CLEAN')
@@ -941,6 +963,7 @@ def preflight(args):
                 if pop.p0hash(ss)!=m['P0_sha256']:fail('P0_MISMATCH')
                 pop.gen.assert_fresh_prompts(mods,jj,ss)
     print(json.dumps({'status':'PERSISTENT_PREFLIGHT_OK_NO_PAID',
+        'activation_profile':activation,
         'source_original_untouched':True,'P0_unchanged':True,
         'cycles_created':len(list(Path(args.experiment).glob('CYCLE_*/cycle.json'))),
         'no_mutation_by_preflight':True},ensure_ascii=False,indent=2))
@@ -950,9 +973,11 @@ def main():
     cli=argparse.ArgumentParser(description=__doc__)
     subs=cli.add_subparsers(dest='command',required=True)
     a=subs.add_parser('init');a.add_argument('--source-root',required=True);a.add_argument('--out',required=True)
+    a.add_argument('--activation-profile',required=True,help='Explicitly selected JSON runtime feature/profile; new roots only')
     a.add_argument('--math-verification',action='store_true',help='Opt in to native recursive mathematics verification for NEW roots')
     a=subs.add_parser('init-peer-snapshot')
     a.add_argument('--source-experiment',required=True);a.add_argument('--out',required=True)
+    a.add_argument('--activation-profile',required=True,help='New experiment profile, never implicitly inherited')
     a=subs.add_parser('combine-snapshot');a.add_argument('--experiment',required=True)
     for cmd in ('preflight','status','run'):
         a=subs.add_parser(cmd);a.add_argument('--experiment',required=True)
