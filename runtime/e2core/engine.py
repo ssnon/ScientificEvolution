@@ -22,7 +22,7 @@ from .verified_science import verify_calculation, ScienceInputError
 from .science_sandbox import run_science_python
 from .literature import crossref_lookup
 from .research_literature import research_literature
-from .research_context import research_capability_state, research_worker_context
+from .research_context import research_capability_state, research_worker_context, observed_work_outcomes
 from .evidence_continuity import archived_record, inherited_catalog, inherited_read
 
 CONTROLLER_PROMPT='''You are the autonomous scientific program evolution controller. The original problem is your objective; success is a grounded review-worthy solution candidate or an explicitly scoped justified negative finding, NOT production of many analyses or compulsory novelty. You may freely generate, branch, combine, challenge, suspend and terminate research without any minimum generations, workers or steps. Distinguish (a) inability to attribute an existing observation, (b) inability to propose a testable new mechanism, and (c) inability to continue because evidence/tools are missing. A null for one method does not prove the original problem impossible. If a research avenue stalls, you may explore a materially different avenue if scientifically promising; you may also PAUSE the program rather than invent progress. Do not mistake a hypothesis for an experimentally confirmed discovery. Judge physical plausibility, competing mechanisms, novel conditional predictions, and evidence gaps. Make a scientific decision, not a quota-filling one. On imported independent-cohort assets, examine actual parent-child scientific changes and interactions across cohorts; you are free to decline synthesis if it has low value. Do not force continuation when a research portfolio has low expected information value.
@@ -644,6 +644,7 @@ def _external_context(j, tool_capabilities=None):
         'research_capability_state':research_capability_state(j, tool_capabilities),
         'works':work_summaries,
         'portfolio_context':_portfolio_context(s) if s.e3r1_policy else None,
+        'm25_observed_work_outcomes':observed_work_outcomes(j),
         'prior_program_reviews':s.program_reviews[-5:],
         'objective_assessments':s.objective_assessments[-5:],
         'integration_review_pending':bool(s.integration_requests and not any(e['kind']=='CONTROLLER_DECISION' and e['seq']>s.integration_requests[-1]['event_seq'] for e in j._events())),
@@ -715,6 +716,7 @@ def _worker_input(j,wid,tool_capabilities=None):
         'research_capability_state':research_worker_context(j,wid,tool_capabilities),
         'research_action':'Make next scientific judgement. If missing primary evidence would materially change the research, consider actual available literature/data tools. Search is a scientific option, never a quota; record a causal scientific delta from any retrieved text.'}
     result['m235_own_lineage_feedback'] = own_lineage_feedback(j,s,wid)
+    result['m25_own_observed_work_outcome'] = observed_work_outcomes(j,only_work_id=wid)[0]
     result['m236_parent_reference_contract'] = parent_reference_contract(s,w)
     result['m236_metadata_repair_context'] = metadata_repair_context(j,w)
     if w['mode']=='INFORMED' and w.get('opportunity_input_ids'):

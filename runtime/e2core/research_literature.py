@@ -72,6 +72,32 @@ def _arg(args,key,regex=None,maxlen=260):
         raise RetrievalError('INVALID_'+key.upper())
     return v.strip()
 
+# M25_SOURCE_EVIDENCE_CONTINUITY_V1: accept an *exact* decimal PMCID suffix
+# returned by a registry without inventing a DOI/PMCID correspondence.
+def _m25_pmcid(value):
+    if type(value) is int and 0 <= value < 10**12:
+        token = str(value)
+    elif isinstance(value, str):
+        token = value.strip()
+    else:
+        raise RetrievalError('INVALID_PMCID')
+    m = re.fullmatch(r'(?:PMC)?([0-9]{1,12})', token, re.I)
+    if not m:
+        raise RetrievalError('INVALID_PMCID')
+    return 'PMC' + m.group(1)
+
+
+def _m25_integer_argument(args, key, default, *, minimum=0, maximum=None, error=None):
+    # Original model-authored request is preserved in TOOL_RECORDED, unchanged.
+    # A decimal JSON string is a representation repair, NOT scientific repair.
+    value = args.get(key, default)
+    if isinstance(value, str) and re.fullmatch(r'[0-9]{1,12}', value):
+        value = int(value)
+    if type(value) is not int or value < minimum or (maximum is not None and value > maximum):
+        raise RetrievalError(error or 'INVALID_' + ('PAGE' if key == 'page' else 'PAGINATION' if key in ('offset','limit') else key.upper()))
+    return value
+
+
 def _call(fetch,url):
     buf=fetch(url)
     if not isinstance(buf,bytes) or len(buf)>MAX_CONTENT:raise RetrievalError('INVALID_RESPONSE_BYTES')
@@ -108,8 +134,7 @@ def _europepmc_record(v):
 def _search(args,fetch):
     provider=args.get('provider','openalex')
     query=_arg(args,'query',maxlen=220)
-    page=args.get('page',1)
-    if type(page)!=int or not 1<=page<=5:raise RetrievalError('INVALID_PAGE')
+    page=_m25_integer_argument(args,'page',1,minimum=1,maximum=5)
     if provider=='openalex':
         url=OPENALEX_BASE+'?'+urllib.parse.urlencode({'search':query,'per_page':min(10,max(1,args.get('limit',6) if type(args.get('limit',6))==int else 6)),'page':page})
         obj=_jget(fetch,url)
@@ -159,15 +184,15 @@ def _abstract(args,fetch):
         'full_text_read':False,'scientific_certification':False}
 
 def _resolve_pmcid(args,fetch):
-    if args.get('pmcid'):
-        return _arg(args,'pmcid',PMCID_RE,maxlen=20).upper(),None
+    if 'pmcid' in args:
+        return _m25_pmcid(args.get('pmcid')),None
     doi=_arg(args,'doi',DOI_RE)
     query='DOI:'+doi
     url=OA_BASE+'/search?'+urllib.parse.urlencode({'query':query,'pageSize':5,'format':'json','resultType':'core'})
     rows=(_jget(fetch,url).get('resultList') or {}).get('result',[])
     match=next((x for x in rows if x.get('pmcid') and x.get('doi','').lower()==doi.lower()),None)
     if not match:raise RetrievalError('NO_OPEN_FULLTEXT_PMCID_DISCOVERED')
-    return _arg({'pmcid':match['pmcid']},'pmcid',PMCID_RE,20).upper(),url
+    return _m25_pmcid(match['pmcid']),url
 
 def _parse_jats(fetch,pmcid):
     url=OA_BASE+'/'+pmcid+'/fullTextXML'
@@ -210,10 +235,11 @@ def _parse_jats(fetch,pmcid):
         'abstract':abstract_text,'paragraphs':paragraphs,'references':references,'supplements':supplements,'document_bytes':len(raw)}
 
 def _fulltext(args,fetch):
+    # Validate bounded pagination *before* making a provider request.
+    off=_m25_integer_argument(args,'offset',0,minimum=0)
+    limit=_m25_integer_argument(args,'limit',5,minimum=1,maximum=8)
     pmcid,resolution=_resolve_pmcid(args,fetch)
     d=_parse_jats(fetch,pmcid)
-    off=args.get('offset',0);limit=args.get('limit',5)
-    if type(off)!=int or off<0 or type(limit)!=int or not 1<=limit<=8:raise RetrievalError('INVALID_PAGINATION')
     preview=[{k:(v[:1400] if k=='text' else v) for k,v in p.items()}
         for p in d['paragraphs'][off:off+limit]]
     return {'status':'DELIVERED','action':'read_fulltext','pmcid':pmcid,'resolution_url':resolution,
@@ -266,8 +292,7 @@ def _figures(args,fetch):
 
 def _refs(args,fetch):
     pmcid,_=_resolve_pmcid(args,fetch); d=_parse_jats(fetch,pmcid)
-    off=args.get('offset',0)
-    if type(off)!=int or off<0:raise RetrievalError('INVALID_OFFSET')
+    off=_m25_integer_argument(args,'offset',0,minimum=0,error='INVALID_OFFSET')
     return {'status':'DELIVERED','action':'references','pmcid':pmcid,'source_url':d['url'],
         'source_sha256':d['sha256'],'total_references':len(d['references']),
         'references':d['references'][off:off+12], 'next_offset':off+12 if off+12<len(d['references']) else None,

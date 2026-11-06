@@ -83,6 +83,77 @@ def _capabilities(contract):
        'limitations':['A custom backend is configured; runtime cannot attest which tool kinds are implemented. The Worker prompt lists supported native request formats, but this backend may differ.']}
 
 
+# M25_SOURCE_EVIDENCE_CONTINUITY_V1: observation, not a success policy.
+def observed_work_outcomes(j, only_work_id=None):
+    """Separate assigned question, executed actions and authored output.
+
+    This intentionally does NOT grade scientific task completion, choose a
+    continuation, infer an absent paper, or enforce a Work/PEER parent quota.
+    Controller may see all current-root Work; Worker uses only its own ID.
+    """
+    state = j.verify()
+    attempts = _attempts(j, only_work_id)
+    by_work = {}
+    for a in attempts:
+        by_work.setdefault(a['work_id'], []).append(a)
+    records = []
+    for wid, w in state.work.items():
+        if only_work_id is not None and wid != only_work_id:
+            continue
+        these = by_work.get(wid, [])
+        authored = [state.assets[aid] for aid in w.get('published', []) if aid in state.assets]
+        classes = Counter(a['evidence_class'] or 'UNCLASSIFIED' for a in these)
+        statuses = Counter(str(a['result_status']) for a in these)
+        kinds = Counter(a['tool_kind'] for a in these)
+        # Status/evidence-class assertions are tool-return facts, not a proof
+        # that the model correctly interpreted the actual paper contents.
+        source_text_tools = []
+        for a in these:
+            if a['result_status'] != 'DELIVERED':
+                continue
+            if a['evidence_class'] not in ('OA_FULLTEXT_TEXT','OA_PDF_TEXT',
+                                          'OA_SUPPLEMENT_TEXT','DATA_FILE_TEXT'):
+                continue
+            raw_entry = state.tool_results.get(a['tool_id'])
+            if not raw_entry:
+                continue
+            returned = json.loads(j.raw(raw_entry['result_blob']))
+            if not isinstance(returned, dict):
+                continue
+            body = (returned.get('paragraphs') or returned.get('matches') or [])
+            has_text = (any(isinstance(v,dict) and
+                            (str(v.get('text') or '').strip() or str(v.get('excerpt') or '').strip())
+                            for v in body) if isinstance(body,list) else False)
+            has_text = has_text or any(isinstance(returned.get(k),str) and returned[k].strip()
+                for k in ('page_text','contents_excerpt'))
+            if has_text:
+                source_text_tools.append(a['tool_id'])
+        records.append({
+            'work_id': wid,
+            'original_assigned_question': w.get('question', '')[:480],
+            'current_work_status': w.get('status'),
+            'recorded_work_outcome': w.get('outcome'),
+            'actual_tool_count': len(these),
+            'actual_tool_kinds': dict(kinds),
+            'actual_tool_statuses': dict(statuses),
+            'actual_evidence_classes': dict(classes),
+            'direct_text_tool_ids': source_text_tools,
+            'retrieval_or_tool_errors': [
+                {'tool_id': a['tool_id'], 'status': a['result_status'],
+                 'error_code': a['error_code']}
+                for a in these if a['result_status'] in
+                ('EVIDENCE_UNAVAILABLE', 'REJECTED', 'EXECUTION_FAILED')][-6:],
+            'model_authored_asset_count': len(authored),
+            'model_authored_asset_kinds': dict(Counter(a['kind'] for a in authored)),
+            'model_authored_asset_ids': [a['id'] for a in authored[-10:]],
+            'scientific_question_resolved': 'NOT_DETERMINED_BY_OPERATIONAL_LEDGER',
+            'warning': ('A new theoretical asset and completion of an assigned evidence '
+                'audit are distinct claims. No tool call is mandatory; no automatic '
+                'scientific disposition is inferred from counts or Work.status.'),
+        })
+    return records
+
+
 def research_capability_state(j,contract=None):
     """Portfolio-level facts the informed Controller is authorized to assess."""
     s=j.verify();attempts=_attempts(j)
