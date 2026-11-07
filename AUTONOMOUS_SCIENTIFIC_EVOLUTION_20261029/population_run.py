@@ -15,6 +15,7 @@ from pathlib import Path
 
 import generational_run as gen
 from e2core.evidence_continuity import uninterpreted_last_tool_feedback
+from e2core.m234_execution_observation import inspect_python_execution
 
 PROTO='SCIENTIFIC_POPULATION_GENERATIONAL_V1'
 DIRECT_CLASSES={
@@ -278,9 +279,17 @@ def record_science_tool_results(mods, dest, donor, ds, peer_name):
             fail('SCIENCE_TOOL_PROVENANCE_MALFORMED:'+tid)
         actual=record['result_blob'];request=record['request_blob']
         kind=req['kind'];status=result.get('status')
-        evidence_class=('EXECUTED_COMPUTATION_NOT_SCIENTIFICALLY_VALIDATED'
-                        if status in {'EXECUTED','DELIVERED','VERIFIED_NUMERIC_ARITHMETIC'}
-                        else 'FAILED_CALCULATION_ATTEMPT_NOT_SCIENTIFIC_NEGATIVE')
+        # M23.4 observer is the source of truth for explicit model-declared
+        # no-computation; process EXECUTED alone cannot imply a calculation.
+        observation=(inspect_python_execution(req,result)
+                     if kind=='python_science' else None)
+        if (status=='EXECUTED' and observation
+                and observation['model_declared_noncomputation']):
+            evidence_class='SANDBOX_EXECUTED_MODEL_DECLARED_NO_COMPUTATION'
+        elif status in {'EXECUTED','DELIVERED','VERIFIED_NUMERIC_ARITHMETIC'}:
+            evidence_class='EXECUTED_COMPUTATION_NOT_SCIENTIFICALLY_VALIDATED'
+        else:
+            evidence_class='FAILED_CALCULATION_ATTEMPT_NOT_SCIENTIFIC_NEGATIVE'
         content={'tool_id':tid,'work_id':record['work_id'],
                  'request':req,'result':result,'evidence_class':evidence_class}
         sid=hname(mods,'SRC_INHERITED_TOOL_',
