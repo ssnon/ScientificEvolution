@@ -8,7 +8,7 @@ from __future__ import annotations
 
 
 NONCOMPUTATION_LABELS = frozenset({
-    'not_executed', 'not_run', 'not_performed', 'planned_only',
+    'not_executed', 'not_run', 'not_performed', 'planned_only', 'plan_only',
 })
 
 
@@ -25,7 +25,10 @@ def inspect_python_execution(request, response):
     declared = response.get('result')
     claim = declared.get('status') if isinstance(declared, dict) else None
     self_reports_no_computation = (
-        isinstance(claim, str) and claim.strip().lower() in NONCOMPUTATION_LABELS
+        isinstance(declared, dict) and (
+            (isinstance(claim, str) and claim.strip().lower() in NONCOMPUTATION_LABELS)
+            or declared.get('not_executed') is True
+        )
     )
     if execution_status != 'EXECUTED':
         observation = 'NO_SUCCESSFUL_SANDBOX_EXECUTION_RECORDED'

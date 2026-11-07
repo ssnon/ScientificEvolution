@@ -280,3 +280,40 @@ Record separately: `IMPLEMENTED` (code exists); `MOCK_VERIFIED` (controlled fixt
 - **Repaired regression process:** Earlier 53-test “full regression” omitted continuity; the M23.5 fixture had schema omissions, corrected without runtime changes. After `010ee90`, the five checked suites ran **235 total / 234 pass / 1 skipped / 0 failed**. The new disposable synthetic experiment passed activation-profile persistence, optimized preflight, environment/model drift rejection, budget-file absence rejection, old-root read-only preflight, no-call source preservation, and temporary cleanup. No external paid model call or modification of previous research Journals occurred.
 - **Interpretation:** These are software implementation and no-paid integration results. They do not elevate model-authored math to executed proof, metadata to inspected primary sources, imported PEER assets to comparative scientific synthesis, or a P0 proposal to Level II status. The next scientific objective remains an autonomous, source-grounded, independently reviewable *pre-experimental* argument or a defensible scoped negative/defer, on a separately approved **new profiled source-pinned ROOT**.
 <!-- END_M25_2026_11_06_ENGINEERING_CONTINUITY_AUDIT -->
+
+
+<!-- M25_POSTRUN_CONTINUITY_20261108 -->
+## 2026-11-08 — M25 integrated science and execution-observer continuity
+
+- **Source and experiment:** runtime parent `aa3d906`;
+  `M25_LEVELII_FROM_M24_G1_20261107_02`, sourced from
+  immutable M24 G1 Population.
+- **Execution:** two operationally completed generations,
+  192 SAVED model calls, 25 Controller decisions, actual
+  provider-reported cost USD 14.82903343.
+- **Scientific state:** ONGOING / P0 UNRESOLVED. No independently
+  established pre-experimental Level II candidate.
+- **Substantive progress:** model-mediated numerical correction
+  of an invalid augmented-matrix exponential approach and
+  incorrect FFT coefficient extraction for a two-state
+  finite-exposure CTMC-Poisson observation model. Corrected
+  single-exposure means/variances agreed with analytic controls.
+- **Limitations:** no completed temporal joint-likelihood
+  benchmark, physically bounded strong-null comparison,
+  held-out predictive separation, power calibration, or
+  independent experimental attribution.
+- **Observed execution gap:** three executed sandbox requests
+  contained model-declared PLAN_ONLY results. The older M23.4
+  observer did not recognize these declarations.
+- **Repair:** extend existing M23.4 noncomputation
+  classification while preserving original tool results,
+  Worker/Controller decision autonomy, and FRESH isolation.
+- **Regression:** 237 total, 236 PASS, one SKIP, zero FAIL.
+- **Decision chronology:** final G1 Controller event 2090
+  preceded corrected PMF tool event 2144. Lack of subsequent
+  Controller uptake is not demonstrated scientific rejection.
+- **Future research:** preserve the corrected calculation and
+  unresolved benchmark as historical evidence. Assess whether
+  future autonomous researchers build genuine temporal
+  observation-law and strong-null arguments. No forced
+  hypothesis, Work completion, or positive Level II result.

@@ -1,3 +1,40 @@
+<!-- M25_POSTRUN_CONTINUITY_20261108 -->
+# ScientificEvolution — M25 Post-run Continuity Checkpoint
+
+**2026-11-08 KST.** Supersedes earlier operational status claims
+while preserving all prior development and research history.
+
+- Runtime parent source: `aa3d906adc77bd9dffcb0fc5d61cffcb5de27d8a`.
+- M25 integrated run: `M25_LEVELII_FROM_M24_G1_20261107_02`.
+- Two generations, six research roots, 192 SAVED model calls,
+  25 Controller decisions, no UNCERTAIN calls.
+- Provider-reported cost: USD 14.82903343 against USD 30
+  internal experiment budget.
+- Final scientific disposition: ONGOING; P0 UNRESOLVED.
+- Native Math Verification and Activation Profile were active.
+- Development continuity defect: M23.4 execution observation
+  omitted `PLAN_ONLY` / `plan_only` and explicit
+  `not_executed: true`. Three actual M25 tool returns exposed
+  this classification gap.
+- Existing `m234_execution_observation.py` was repaired, not
+  replaced with a new evidence or scientific policy system.
+- Complete no-paid regression: 237 tests, 236 passed,
+  one skipped, zero failed.
+- Final G1 Controller D00006 occurred at Journal event 2090;
+  corrected PMF tool result was recorded at event 2144.
+  The Controller cannot be said to have ignored that result.
+- Single-exposure CTMC-Poisson PMF was numerically corrected
+  and matched analytic mean/variance controls.
+- Temporal joint likelihood, bounded strong-null fitting,
+  held-out separation, and experimental feasibility remain
+  unverified or unfinished.
+- No old source-pinned Journal was rewritten.
+- Further paid research requires a separate operator decision.
+- The general-purpose autonomous AI Scientist remains the
+  objective; SERS is the scientific testbed.
+
+---
+
 <!-- CURRENT_STATE_2026_11_06_M25_ACTIVATION_INTEGRATION -->
 # ScientificEvolution — Current Development State
 

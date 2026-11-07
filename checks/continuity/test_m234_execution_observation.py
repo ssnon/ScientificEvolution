@@ -65,6 +65,26 @@ class M234ExecutionFeedbackTests(unittest.TestCase):
         self.assertFalse(observation['scientific_computation_validated'])
         self.assertEqual(observation['sandbox_execution_status'],'EXECUTED')
 
+    def test_m25_plan_only_and_explicit_no_execution_flags(self):
+        # Exact status spelling and flag variants observed in M25's real saved
+        # sandbox returns. Process execution is not scientific computation.
+        cases = [
+            {'status': 'PLAN_ONLY', 'not_executed': True},
+            {'status': 'plan_only'},
+            {'status': 'EXECUTED_CONTROL_CALCULATION', 'not_executed': True},
+            {'not_executed': True},
+        ]
+        for declared in cases:
+            with self.subTest(declared=declared):
+                obs = inspect_python_execution(
+                    REAL_REQUEST, {'status': 'EXECUTED', 'result': declared})
+                self.assertEqual(
+                    obs['observation'],
+                    'SANDBOX_EXECUTED_MODEL_DECLARED_NO_COMPUTATION')
+                self.assertTrue(obs['model_declared_noncomputation'])
+                self.assertEqual(obs['sandbox_execution_status'], 'EXECUTED')
+                self.assertFalse(obs['scientific_computation_validated'])
+
     def test_real_computation_not_automatically_certified(self):
         obs=inspect_python_execution(
             {'kind':'python_science','arguments':{'code':'result={"mean":sum([1,2,3])/3}'}},
