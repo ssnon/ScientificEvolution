@@ -279,7 +279,7 @@ def record_science_tool_results(mods, dest, donor, ds, peer_name):
         actual=record['result_blob'];request=record['request_blob']
         kind=req['kind'];status=result.get('status')
         evidence_class=('EXECUTED_COMPUTATION_NOT_SCIENTIFICALLY_VALIDATED'
-                        if status in {'EXECUTED','DELIVERED'}
+                        if status in {'EXECUTED','DELIVERED','VERIFIED_NUMERIC_ARITHMETIC'}
                         else 'FAILED_CALCULATION_ATTEMPT_NOT_SCIENTIFIC_NEGATIVE')
         content={'tool_id':tid,'work_id':record['work_id'],
                  'request':req,'result':result,'evidence_class':evidence_class}
