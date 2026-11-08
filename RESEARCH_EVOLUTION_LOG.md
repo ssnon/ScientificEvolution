@@ -317,3 +317,28 @@ Record separately: `IMPLEMENTED` (code exists); `MOCK_VERIFIED` (controlled fixt
   future autonomous researchers build genuine temporal
   observation-law and strong-null arguments. No forced
   hypothesis, Work completion, or positive Level II result.
+
+<!-- M25_REAL_CARRY_AUDIT_20261108 -->
+## 2026-11-08 — Actual M25 G1 historical calculation carry audit
+
+- **Evidence:** read-only differential audit of two separately
+  source-pinned continuation bases created from the same verified
+  M25 G1 Population donor.
+- **Observed:** 716 historical science assets and nine original
+  calculation/tool attempts retained, with matching request and
+  result blob hashes.
+- **Corrected classifications:** M41 `_00001` and M44 `_00005`
+  are explicitly model-declared noncomputations, not completed
+  numerical computations.
+- **Unchanged scientific evidence:** corrected single-exposure PMF
+  result M44 `_00009`; last failed tool M44 `_00013`, still pending
+  historical Worker interpretation.
+- **Continuity:** three unfinished Works preserved as history;
+  146 INFORMED-readable historical source records and zero
+  FRESH-readable historical source records.
+- **Limits:** no new inference, scientific claim, independent
+  validation, strong-null resolution, or autonomous uptake.
+- **Conclusion:** M23.4 observation and M23.6.2 historical
+  tool-result carry now give consistent classifications on actual
+  M25 data. Future research should evaluate scientific decisions,
+  rather than treating historical source accessibility as uptake.

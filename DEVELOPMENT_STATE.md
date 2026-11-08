@@ -1,3 +1,29 @@
+<!-- M25_REAL_CARRY_AUDIT_20261108 -->
+## 2026-11-08 — Historical science carry verified on real M25 G1 data
+
+- Source branch: `dev/m25-inherited-evidence-v1`, commit `831d8ca`.
+- Existing M23.4 execution observation was connected to the M23.6.2
+  historical science-tool carry path; no new research policy was added.
+- Offline regression: 238 tests, 237 passed, one skipped, zero failed.
+- Real donor: `M25_LEVELII_FROM_M24_G1_20261107_02/CYCLE_001/POPULATION`.
+- Differential roots: `M25_CONTINUATION_FROM_G1_20261108_01`
+  (prior classification) and `M25_CONTINUATION_FROM_G1_20261108_02`
+  (corrected classification).
+- Actual verified carry: 716 assets, nine prior science-tool records,
+  original request/result blob hashes unchanged.
+- Exactly two historical evidence classifications changed:
+  M41 `_00001` and M44 `_00005`, both model-declared PLAN_ONLY.
+- Corrected M44 PMF `_00009` and failed `_00013` retained their
+  original provenance and appropriate evidence distinctions.
+- Three unfinished Works remained historical, not silently completed
+  or automatically runnable.
+- INFORMED inherited records: 146; FRESH inherited records: zero.
+- New source pin verified on 61 Python files. No paid model calls.
+- This verifies historical evidence transmission, not subsequent
+  autonomous scientific uptake or Level II achievement.
+
+---
+
 <!-- M25_POSTRUN_CONTINUITY_20261108 -->
 # ScientificEvolution — M25 Post-run Continuity Checkpoint
 
