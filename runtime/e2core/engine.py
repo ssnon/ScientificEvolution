@@ -738,6 +738,68 @@ def _external_context(j, tool_capabilities=None):
         context['m231_prior_unknown_work_source_rejection']=diagnostic
     return context
 
+def _historical_ai_worker_view(j,sid,src):
+    """Decode known historical-AI source formats without changing old Journal bytes.
+
+    The legacy source view is byte-for-byte semantically identical. M28-A1
+    targeted and M28-A2 selected imports have a different provenance schema;
+    neither record denotes fresh experimentation or verified primary evidence.
+    Unknown source formats are not guessed or silently accepted.
+    """
+    guard(src.get('kind')=='HISTORICAL_AI', 'HISTORICAL_AI_KIND_REQUIRED')
+    rec=json.loads(j.raw(src['blob']))
+    guard(isinstance(rec,dict), 'HISTORICAL_AI_RECORD_NOT_OBJECT')
+    if {'ref','science','tool_result','science_sha256'}.issubset(rec):
+        return {'id':sid,'ref':rec['ref'],'science':rec['science'],
+            'tool_status':rec['tool_result'].get('status') if isinstance(rec['tool_result'],dict) else 'UNKNOWN',
+            'science_sha256':rec['science_sha256']}
+
+    if (rec.get('protocol')=='META_RESEARCH_COLLABORATION_A2' and
+            rec.get('original_science_not_certified') is True and
+            rec.get('this_import_not_new_execution') is True):
+        origin_schema='M28_A2_MODEL_SELECTED_HISTORICAL_AI'
+        guard(sid.startswith('SRC_M28_COLLAB_'),
+              'M28_A2_HISTORICAL_SOURCE_ID_MISMATCH')
+        guard(bool(rec.get('origin_model_call_id')) and bool(rec.get('selected_report_id')),
+              'META_A2_HISTORICAL_SOURCE_PROVENANCE_INCOMPLETE')
+    elif (rec.get('not_blind_independent') is True and
+          rec.get('not_primary_evidence') is True and
+          rec.get('origin_observation_not_certified') is True):
+        origin_schema='M28_A1_TARGETED_HISTORICAL_AI_NOT_BLIND'
+        guard(sid.startswith('SRC_M28_TARGET_'),
+              'M28_A1_HISTORICAL_SOURCE_ID_MISMATCH')
+        guard(bool(rec.get('source_controller_call')),
+              'META_A1_HISTORICAL_SOURCE_PROVENANCE_INCOMPLETE')
+    else:
+        raise EvidenceError('UNKNOWN_HISTORICAL_AI_SOURCE_SCHEMA:'+sid)
+
+    original=rec.get('original_asset')
+    origin_root=rec.get('origin_root')
+    asset_id=rec.get('original_asset_id')
+    guard(isinstance(original,dict) and isinstance(asset_id,str) and
+          bool(asset_id) and original.get('id')==asset_id and
+          isinstance(original.get('claim'),str) and bool(original['claim']) and
+          isinstance(origin_root,str) and bool(origin_root),
+          'M28_HISTORICAL_AI_ASSET_PROVENANCE_INVALID')
+    science={'scientific_work':original['claim'],
+             'scientific_delta':original.get('delta_from_parents',''),
+             'scope':original.get('scope'),
+             'assumptions':original.get('assumptions'),
+             'predictions':original.get('predictions',[]),
+             'limitations':original.get('limitations',[]),
+             'original_asset':original,
+             'original_source_record':rec,
+             'source_schema':origin_schema,
+             'not_primary_evidence':True,
+             'new_tool_executed_by_import':False,
+             'scientific_certification':False}
+    return {'id':sid,'ref':origin_root+'#'+asset_id,
+            'science':science,
+            'tool_status':'HISTORICAL_AI_IMPORT_NOT_NEW_TOOL_EXECUTION',
+            'science_sha256':sha(canon(original)),
+            'source_blob_sha256':src['blob'],
+            'source_schema':origin_schema}
+
 def _worker_input(j,wid,tool_capabilities=None):
     s=j.verify();w=s.work[wid];base=j.input_for(wid)
     prior=[]
@@ -752,10 +814,7 @@ def _worker_input(j,wid,tool_capabilities=None):
             if sid not in s.sources:continue
             src=s.sources[sid]
             if src['kind']=='HISTORICAL_AI':
-                rec=json.loads(j.raw(src['blob']))
-                historical.append({'id':sid,'ref':rec['ref'],'science':rec['science'],
-                   'tool_status':rec['tool_result'].get('status') if isinstance(rec['tool_result'],dict) else 'UNKNOWN',
-                   'science_sha256':rec['science_sha256']})
+                historical.append(_historical_ai_worker_view(j,sid,src))
         base['authorized_historical_records']=historical
     else:
         guard(not base.get('parent_assets') and all(q['kind']=='PRIMARY' for q in base.get('source_entries',[])),'FRESH_CANNOT_GET_PRIOR_AI')
