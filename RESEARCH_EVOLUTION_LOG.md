@@ -317,3 +317,44 @@ Record separately: `IMPLEMENTED` (code exists); `MOCK_VERIFIED` (controlled fixt
   future autonomous researchers build genuine temporal
   observation-law and strong-null arguments. No forced
   hypothesis, Work completion, or positive Level II result.
+
+
+<!-- ARCHITECTURE_META_AUTONOMY_20261109 -->
+## 2026-11-09 — Architectural goal clarification following M26/M27 review
+
+- **Category:** design clarification and evidence-limited integration; **no new
+  scientific experiment, calculation, claim validation, or runtime modification**.
+- **Mission clarification:** The human supplies P0 and operator constraints,
+  **not** a required number of researchers, fixed Population synthesis, a
+  mandatory sequence of generations, or an imposed scientific stop. The
+  AI Scientist itself should scientifically decide organization, research
+  method, collaborations, independent criticism, continuation and warranted
+  HOLD/termination. Positive discovery is not a compulsory outcome.
+- **M26 observed:** 2 generations, 6 ROOTs, 192 SAVED calls, 25 Controller
+  decisions, `ONGOING` and P0 `UNRESOLVED` at the operational boundary;
+  corrected finite-exposure count law and conditional mathematical findings,
+  but unfinished integrated benchmark and evidence constraints. This is
+  partial scientific capability plus incomplete global science, **not**
+  evidence that more model calls would either succeed or necessarily fail.
+- **Previously investigated:** M16-M25 provenance, saved source/tool results,
+  FRESH separation, Controller and Worker inputs; M26 forensic audits of
+  decisions, tool attempts, and execution; M27 narrow computational probe.
+  Do not claim prior Controller decisions ignored later tool events.
+- **Design mismatch directly observed:** `peer_count` and PEERS/COMBINE/
+  POPULATION cycle remain primarily operator/runtime decisions. The system
+  supports research Work selection and HOLD/disposition, but full autonomy
+  over research organization and evidence-justified scientific termination
+  has **not been established** in the integrated M26 run.
+- **Unproven mechanism:** Fixed generations or evaluator calls have **not**
+  been shown to cause the unfinished P0; model capacity, scientific problem
+  constraints, research execution and tool environment remain live causes.
+  Reducing advisory calls is a cost question, not necessarily a solution to
+  the scientific bottleneck.
+- **Resulting decision:** Reassess existing architecture as one hypothesis;
+  retain scientific provenance and observed scientific accomplishments,
+  but do not preserve Controller/Worker/Population/Generation solely for
+  compatibility. Define what scientific and meta-scientific decisions the
+  system must be able to make before choosing how to implement them.
+- **Evidence and next decision:** see
+  [`docs/AI_SCIENTIST_ARCHITECTURE_REASSESSMENT_20261109_KO.md`](docs/AI_SCIENTIST_ARCHITECTURE_REASSESSMENT_20261109_KO.md). No new Level II or validated architecture
+  result is claimed by this documentation milestone.

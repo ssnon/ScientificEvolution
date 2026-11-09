@@ -1,3 +1,67 @@
+<!-- ARCHITECTURE_META_AUTONOMY_20261109 -->
+# 2026-11-09 — AI Scientist mission clarification and architecture review checkpoint
+
+**State: DESIGN REQUIREMENTS REVISED; RUNTIME UNCHANGED.** This entry supersedes
+older statements *only where they imply a scientifically mandatory fixed number
+of peers, predetermined synthesis, fixed generations, or operator-selected
+scientific continuation/termination*. All earlier implementation, failure,
+source-pin, and science records remain historically valid.
+
+- **Original user intent made explicit:** The AI Scientist decides, subject to
+  external safety and spending limits, which scientific questions to pursue,
+  what methods and tools to use, how many autonomous researchers are useful,
+  whether to challenge, cooperate, synthesize, reorganize, spawn generations,
+  or stop. The same scientific autonomy includes evidence-justified HOLD,
+  constrained non-identifiability and missing indispensable data; positive
+  hypothesis generation is not compulsory. Operator-selected budgets and
+  permissions must never be confused with a scientific disposition.
+- **Observed implementation mismatch:** The native persistent loop uses
+  operator-specified `peer_count`, a PEERS -> COMBINE -> POPULATION cycle and
+  configured cycle/call limits. Controller-directed science inside these
+  stages does not by itself implement meta-research autonomy over whether
+  these stages and population sizes are needed. Existing HOLD/disposition
+  mechanisms are real, but M26 did not demonstrate autonomous scientific
+  termination.
+- **Most recent integrated run (M26, not M25):** Two generations / six ROOTs,
+  192 SAVED model calls, 25 Controller decisions; the recorded split is 100
+  Controller/assessor, 63 general research Worker, 29 native math Worker calls.
+  Research ended at an operational boundary with P0 `UNRESOLVED` and last
+  scientific disposition `ONGOING`. CTMC-Poisson PMF correction, conditional
+  identifiability reasoning, counterexamples and math criticism were substantive
+  partial achievements; full temporal joint/bounded-null/held-out benchmark,
+  independently grounded primary evidence, and Level II were **not established**.
+  A call count or assessor-stage `UNCHANGED` is not a scientific verdict or
+  evidence of waste. More calls could have altered outcomes; that is unknown.
+- **Prior audits must not be repeated under new names:** M16-M18 lineage,
+  M19-M20 source catalog/lookup, M23.4-M23.6.2 execution/parent/source carry,
+  M25 real-G1 inherited tool truth, M26 saved Worker I/O, controller causal
+  decisions and tools, and M27 limited CTMC execution/format observations
+  already supply extensive evidence. Historical accessibility is not proof
+  of autonomous uptake. M27 narrow correct code was not native production
+  execution and does not establish long-horizon scientific ability.
+- **What is proved vs not proved:** (i) mismatch between original user intent
+  and a fixed organization loop is an identifiable design discrepancy;
+  (ii) that discrepancy did **not** yet establish the cause of M26's unfinished
+  science; (iii) unresolved alternatives include model-level research judgment,
+  execution environment, physical/observational underspecification, the way
+  multiple researchers coordinate, and interactions among them.
+- **Decision rule:** Evaluate scientific goal formulation, autonomous strategy,
+  actual execution, evidentiary verification, dynamic organization, and
+  justified scientific stop **together**, without converting them into fixed
+  research stages. Preserve the ability to reach scoped negatives and honest
+  defer. Do not add a meta-Controller or rename Work as Research Program without
+  identifying the specific new science capability. Do not commit to a sweeping
+  rewrite or repeatedly audit already understood M26 evidence.
+- **Next artifact before code:** A role/choice capability map of the *live*
+  code path, explicit required meta-scientific choices and their current
+  restrictions, concrete scientific behavior differences, and a preservation
+  contract for provenance and real tool outcomes. No paid calls and no runtime
+  source edits are authorized by this documentation checkpoint.
+
+**Full Korean handoff:** [`docs/AI_SCIENTIST_ARCHITECTURE_REASSESSMENT_20261109_KO.md`](docs/AI_SCIENTIST_ARCHITECTURE_REASSESSMENT_20261109_KO.md).
+
+---
+
 <!-- M25_POSTRUN_CONTINUITY_20261108 -->
 # ScientificEvolution — M25 Post-run Continuity Checkpoint
 

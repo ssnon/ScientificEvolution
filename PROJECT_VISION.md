@@ -3,11 +3,14 @@
 ## Purpose
 
 Build a **general-purpose autonomous AI Scientist**. A human supplies an unresolved
-scientific problem (P0), not a scripted sequence of next hypotheses. Independent
-researchers explore, propose, calculate, acquire evidence, challenge, and revise
-hypotheses. A population of researchers decides what research to continue, compare,
-branch, hand off, or terminate. The goal is a scientifically substantive result,
-not a large number of model calls, assets, generations, or successful JSON parses.
+scientific problem (P0), not a scripted sequence of next hypotheses or a fixed
+scientific organization. The system chooses research questions, methods, actual
+execution, independent criticism, and warranted conclusions. It also decides
+on scientific grounds whether to use one or multiple researchers, when to branch,
+collaborate, challenge, synthesize, reorganize, form further cohorts, or stop.
+Neither peer count, mandatory fusion, nor generation count is a scientific policy.
+The goal is a substantive, evidence-scoped result, not the number of model calls,
+assets, generations, or successful JSON parses.
 
 SERS is the current scientific proving ground, **not** a hard-coded mission for
 the research engine. FAKG/Knowledge Graph infrastructure is historical context,
@@ -36,6 +39,45 @@ A **Level II candidate** is a coherent scientific case, not a collection of indi
 **Individual agents are allowed to fail.** A math reviewer may miss a flaw; a literature worker may be unable to acquire a full text; a calculation may be rejected or a hypothesis falsified; a generation may pivot or make no progress. The system must preserve what was *actually* attempted, returned and learned; distinguish a failed assigned task from a potentially useful alternative scientific contribution; keep uncertainties/counterarguments available for correction; and avoid treating mere agreement, review count, asset ancestry, metadata, process-level execution or Work `DONE` as evidence of scientific truth. No mandatory positive discovery, per-agent success rate, depth quota, tool count, peer-parent link or fixed number of generations is a scientific policy.
 
 **The system-level question** is whether independent, imperfect researchers can turn proposals, external constraints, criticisms and negative results into increasingly defensible *experiment-worthy* knowledge over time. Compare claims with actual evidence, including whether corrected limitations affected later scientific decisions; permit justified independent departures instead of enforcing convergence or forced use of any particular previous result.
+
+
+<!-- ARCHITECTURE_META_AUTONOMY_20261109 -->
+## 2026-11-09 clarification — scientific and meta-research autonomy
+
+This is a **clarification of the intended mission, not a declaration that the current
+runtime implements it**. The founder's original goal includes both scientific
+judgment and **autonomy over the research organization and process itself**:
+
+* The scientist chooses which research questions and methods to pursue, and whether
+  to work alone or spawn independent researchers, critics, verifiers, or collaborators.
+* The number of researchers, when or whether independent lines are synthesized,
+  and whether to create further populations or generations must be justified by
+  the research, not prescribed as compulsory stages or scientific quotas.
+* It may continue, pivot, branch, defer, HOLD, or stop **on defensible scientific
+  grounds** (including scoped non-identifiability, missing indispensable evidence,
+  justified negative results, or low expected information value). Tool access
+  failure or an uncompleted task is not automatically proof of impossibility.
+* A scientific HOLD/termination must be distinguishable from a resource budget,
+  permission, sandbox, or execution-time **operational pause**. Human-controlled
+  cost, safety, and access boundaries remain mandatory external constraints;
+  they do not determine the scientific verdict.
+* The system must execute research as well as assess it, distinguish hypotheses
+  from verified evidence, incorporate criticism and negative results, and revise
+  its scientific methods and organization when warranted. Merely gaining more
+  organizational options does not prove judgment quality or scientific ability.
+
+`Controller`, `Worker`, `Verifier`, `PEER`, `Population`, `Generation`, `Asset`,
+and the current science-evolution operators are **possible implementations**,
+not definitions of an AI Scientist and not protected architectural commitments.
+The current native PEERS -> COMBINE -> POPULATION cycle and operator-specified
+peer count are known gaps relative to this clarified objective. This does **not**
+establish that those gaps caused M26's unfinished science. Preserve provenance
+truth, independent FRESH isolation where claimed, accurate tool/experiment
+status, scientific corrections and uncertainty, and unmodified historic P0.
+
+Architecture review and evidence boundary are recorded in
+[`docs/AI_SCIENTIST_ARCHITECTURE_REASSESSMENT_20261109_KO.md`](docs/AI_SCIENTIST_ARCHITECTURE_REASSESSMENT_20261109_KO.md). No new architecture, automatic scientific stop,
+or improved research outcome has been implemented by this documentation change.
 
 ## Invariants
 
