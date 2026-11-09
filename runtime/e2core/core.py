@@ -54,6 +54,9 @@ class State:
     e3r1_policy:bool=False
     objective_assessments:list=field(default_factory=list)
     integration_requests:list=field(default_factory=list)
+    meta_research_autonomy:bool=False
+    organization_requests:dict=field(default_factory=dict)
+    organization_materialized:dict=field(default_factory=dict)
     carried_opportunities:dict=field(default_factory=dict)
     runtime_contract_version:str|None=None
     def apply(self,kind,p):
@@ -68,6 +71,40 @@ class State:
         elif kind=='E3R1_POLICY_ACTIVATED':
             guard(self.program and not self.e3r1_policy and p.get('policy')=='PORTFOLIO_DECISIONS_V1', 'INVALID_E3R1_ACTIVATION')
             self.e3r1_policy=True
+        elif kind=='META_RESEARCH_AUTONOMY_ACTIVATED':
+            from .meta_autonomy import POLICY
+            guard(self.program and not self.meta_research_autonomy and
+                  not self.model_calls and not self.work and not self.assets and
+                  not self.sources and not self.controller_decisions and
+                  not self.program_reviews and p.get('policy')==POLICY,
+                  'META_ORG_ACTIVATION_REQUIRES_NEW_ROOT')
+            self.meta_research_autonomy=True
+        elif kind=='ORGANIZATION_REQUESTED':
+            from .meta_autonomy import validate_request
+            keys={'id','mode','purpose','evidence_asset_ids','target_asset_ids'}
+            guard(isinstance(p,dict) and keys.issubset(p), 'META_ORG_REQUEST_FIELDS_MISSING')
+            request={k:p[k] for k in keys}
+            valid=validate_request(self,request,p.get('decision_id'),p.get('call_id'),p.get('parent_root_id'))
+            guard(p==valid and p.get('science_certification') is False,
+                  'META_ORG_REQUEST_PROVENANCE_MISMATCH')
+            call=self.model_calls.get(p['call_id'])
+            guard(call and call['state']=='SAVED', 'META_ORG_CONTROLLER_NOT_SAVED')
+            self.organization_requests[p['id']]=p
+        elif kind=='ORGANIZATION_ROOT_MATERIALIZED':
+            from .meta_autonomy import _root_name, HEX
+            rid=p.get('id');request=self.organization_requests.get(rid)
+            guard(self.meta_research_autonomy and request and
+                  rid not in self.organization_materialized,
+                  'META_ORG_RECEIPT_UNREQUESTED_OR_DUPLICATE')
+            guard(p.get('relative_root')=='ROOTS/'+_root_name(request)
+                  and isinstance(p.get('child_head_sha256'),str)
+                  and HEX.fullmatch(p['child_head_sha256'])
+                  and isinstance(p.get('binding_sha256'),str)
+                  and HEX.fullmatch(p['binding_sha256'])
+                  and p.get('science_certification') is False
+                  and p.get('execution_status')=='ROOT_INITIALIZED_NO_SCIENCE_EXECUTED',
+                  'META_ORG_RECEIPT_INVALID')
+            self.organization_materialized[rid]=p
         elif kind=='RUNTIME_CONTRACT_UPGRADED':
             guard(self.e3r1_policy and self.runtime_contract_version is None
                   and p.get('version')=='E3R1R2_FRONTIER_CONTINUATION_V1'

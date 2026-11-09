@@ -24,6 +24,9 @@ from .literature import crossref_lookup
 from .research_literature import research_literature
 from .research_context import research_capability_state, research_worker_context, observed_work_outcomes
 from .evidence_continuity import archived_record, inherited_catalog, inherited_read
+from .meta_autonomy import (CONTROLLER_ADDENDUM as META_RESEARCH_CONTROLLER_ADDENDUM,
+                            validate_request as validate_meta_request,
+                            organization_context as meta_organization_context)
 
 CONTROLLER_PROMPT='''You are the autonomous scientific program evolution controller. The original problem is your objective; success is a grounded review-worthy solution candidate or an explicitly scoped justified negative finding, NOT production of many analyses or compulsory novelty. You may freely generate, branch, combine, challenge, suspend and terminate research without any minimum generations, workers or steps. Distinguish (a) inability to attribute an existing observation, (b) inability to propose a testable new mechanism, and (c) inability to continue because evidence/tools are missing. A null for one method does not prove the original problem impossible. If a research avenue stalls, you may explore a materially different avenue if scientifically promising; you may also PAUSE the program rather than invent progress. Do not mistake a hypothesis for an experimentally confirmed discovery. Judge physical plausibility, competing mechanisms, novel conditional predictions, and evidence gaps. Make a scientific decision, not a quota-filling one. On imported independent-cohort assets, examine actual parent-child scientific changes and interactions across cohorts; you are free to decline synthesis if it has low value. Do not force continuation when a research portfolio has low expected information value.
 Scientific evolution responsibility: preserve independent concurrent research until a scientific decision indicates otherwise. Your input explicitly identifies intermediate assets published since your last decision; consider whether they justify a NEW scientific Work before other researchers finish. Scientific evolution means a materially different mechanistic claim, scope, prediction, evidence or counterexample, NOT rephrased text, increased asset count or formal operator labels. Explicitly consider remaining promising independent frontiers when assessing program-level HOLD; a blocked avenue is not automatically a blocked original problem. You may decline any mutation, branch or synthesis if the scientific information value is low. Never force generations, research teams or scientific continuation.
@@ -556,9 +559,18 @@ def controller_plan(j:EvolutionJournal, raw_obj:dict, call_id:str,decision_id:st
         review['m23_verified_reference_translation']=m23_translations
     planned.append(('PROGRAM_REVIEWED',review))
     if assessment is not None:planned.append(('PROGRAM_OBJECTIVE_ASSESSED',assessment))
+    org_requests=raw_obj.get('organization_requests',[])
+    guard(isinstance(org_requests,list),'META_ORG_REQUESTS_NOT_ARRAY')
+    guard(s.meta_research_autonomy or not org_requests,'META_ORG_NOT_ACTIVATED')
+    if org_requests:
+        guard(raw_obj['disposition']=='ONGOING','META_ORG_TERMINAL_CANNOT_SPAWN')
+        for request in org_requests:
+            planned.append(('ORGANIZATION_REQUESTED',
+                validate_meta_request(s,request,decision_id,call_id,j.root.name)))
     final_state=_simulated(s,planned)
     if s.e3r1_policy and raw_obj['disposition']=='ONGOING':
-        guard(any(w['status'] in {'QUEUED','ACTIVE'} for w in final_state.work.values()),
+        guard(any(w['status'] in {'QUEUED','ACTIVE'} for w in final_state.work.values())
+              or bool(org_requests),
               'E3R1_ONGOING_NO_RUNNABLE_OR_NEW_WORK_AFTER_PORTFOLIO')
     return planned
 
@@ -778,6 +790,9 @@ class Engine:
     def controller(self,ident):
         payload=_external_context(self.j, 'NATIVE_RESEARCH_TOOLS' if self._native_tool_contract else 'CUSTOM_BACKEND_CAPABILITIES_UNDECLARED')
         prompt=CONTROLLER_PROMPT+(E3R1_CONTROLLER_ADDENDUM if self.j.verify().e3r1_policy else '')
+        if self.j.verify().meta_research_autonomy:
+            prompt+=META_RESEARCH_CONTROLLER_ADDENDUM
+            payload={**payload,'meta_research_organization_context':meta_organization_context(self.j)}
         text=self.model.call('CTRL_'+ident,'CONTROLLER',None,prompt,payload)
         obj=strict_envelope(text)
         if obj is None:
