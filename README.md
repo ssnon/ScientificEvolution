@@ -1,5 +1,16 @@
 # ScientificEvolution — autonomous AI Scientist development
 
+<!-- M28_A41_SCIENTIFIC_AUTONOMY_EVALUATION_20261109_README -->
+**Latest research-development checkpoint (2026-11-09):** M28-A1/A2/A3 organizational autonomy
+is implemented, and the user reported a successful **no-paid, scripted** A4-0
+end-to-end run at local source `582220c`: two research ROOTs, five PRIMARY
+Controller decisions, one selected cross-root import, zero paid calls.
+**No actual model-driven A4-1 research or independent scientific improvement is
+established.** The older M23.x section below is historical. Scientific goals:
+[PROJECT_VISION.md](PROJECT_VISION.md); current experiment protocol:
+[docs/M28_A41_SCIENTIFIC_AUTONOMY_EVALUATION_20261109_KO.md](docs/M28_A41_SCIENTIFIC_AUTONOMY_EVALUATION_20261109_KO.md).
+<!-- /M28_A41_SCIENTIFIC_AUTONOMY_EVALUATION_20261109_README -->
+
 **Current documentation checkpoint: 2026-11-03 (KST).** Active source branch: `dev/m23-2-efficient-development`; verified implementation head before this documentation update: `168d071` (M23.3 metadata projection and reference diagnostics). This README covers the **current development branch**, not a completed scientific result. Earlier V4 snapshot information remains below as historical context.
 
 The mission is a **general-purpose autonomous AI Scientist**. A human supplies an unresolved scientific problem (P0); independent FRESH and informed researchers propose, challenge, calculate, obtain evidence, and generate follow-up work; population-level synthesis determines continuation, branching, or scientifically justified termination. SERS intermittency is the present test case, not the engine's fixed scientific objective. See [PROJECT_VISION.md](PROJECT_VISION.md).

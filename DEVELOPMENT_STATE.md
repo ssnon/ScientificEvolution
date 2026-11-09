@@ -1,3 +1,34 @@
+<!-- M28_A41_SCIENTIFIC_AUTONOMY_EVALUATION_20261109_STATE -->
+# 2026-11-09 — M28-A4-0 proven execution contract; A4-1 scientific evaluation pending
+
+**Evidence class: IMPLEMENTED + MOCK_VERIFIED; not LIVE_SCIENCE_VALIDATED.**
+M28 A1 (`d4f4c28`) introduced scientist-authored optional organizational requests;
+A2 (`21a37b5`) added selective child-report provenance, scientific collaboration
+and whole-program model review; A3 (`d0912eb`) added dynamic ROOT visitation,
+conservative resume and evidence-triggered re-review. The local follow-up
+`582220c` repaired a genuine `HISTORICAL_AI` source-wire incompatibility
+encountered by an INFORMED Worker after A2 asset import. That commit was local
+in the operator's last log; remote push has not been confirmed in that log.
+
+Operator-provided **A4-0 no-paid CLI/Engine/Journal E2E** reported
+`A40_NO_PAID_CLI_JOURNAL_ENGINE_E2E_PASSED`: two ROOTs, five PRIMARY Controller
+decisions, two child worker assets, **one** selected import, one follow-up
+challenge asset, two preserved portfolio reviews, and **zero paid calls**.
+Prior successful no-paid regression: 286 PASS, 1 SKIP, zero test failures.
+The mock's authored scientific statements were fixtures:
+**SCIENTIFIC_DELTA: NONE; real model organization-choice quality NOT TESTED.**
+
+**Next milestone is research, not another software feature:** A4-1 shall evaluate
+whether a live AI Scientist freely selects scientific method/organization,
+executes actual calculation/evidence/criticism, changes the warranted claim
+and can rationally conclude, pivot, or HOLD. No required peer count, synthetic
+positive candidate, mandatory fusion, or scientific call quota.
+The experiment source, source-pinned history and specific scientific evidence
+must be reviewed separately; no causal improvement over M26 has been shown.
+See [docs/M28_A41_SCIENTIFIC_AUTONOMY_EVALUATION_20261109_KO.md](docs/M28_A41_SCIENTIFIC_AUTONOMY_EVALUATION_20261109_KO.md). New paid inference needs explicit operator approval.
+
+---
+
 <!-- ARCHITECTURE_META_AUTONOMY_20261109 -->
 # 2026-11-09 — AI Scientist mission clarification and architecture review checkpoint
 

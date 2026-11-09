@@ -358,3 +358,31 @@ Record separately: `IMPLEMENTED` (code exists); `MOCK_VERIFIED` (controlled fixt
 - **Evidence and next decision:** see
   [`docs/AI_SCIENTIST_ARCHITECTURE_REASSESSMENT_20261109_KO.md`](docs/AI_SCIENTIST_ARCHITECTURE_REASSESSMENT_20261109_KO.md). No new Level II or validated architecture
   result is claimed by this documentation milestone.
+
+<!-- M28_A41_SCIENTIFIC_AUTONOMY_EVALUATION_20261109_LOG -->
+## 2026-11-09 — M28 A1–A3 engineering integration and A4-0 mock E2E; no new science
+
+- **Source / state:** M28 A1 `d4f4c28`, A2 `21a37b5`, A3 `d0912eb` pushed.
+  A4-0 historical AI wire fix was committed locally at `582220c`; remote
+  push was not confirmed in the supplied operator log.
+- **Engineering cause/effect:** A2 selectively imported a child AI claim into a
+  parent, but the INFORMED Worker expected a legacy `HISTORICAL_AI` record with
+  `ref/science/tool_result/science_sha256`. The A2 record had different,
+  provenance-rich keys. The follow-up Worker raised `KeyError: 'ref'`.
+  A wire-format compatibility patch preserved original child identity,
+  unverified status and historical lineage; no previous Journal was rewritten.
+- **Verification:** Operator no-paid suites 286 PASS, 1 SKIP, 0 FAIL; then
+  CLI/Journal/Engine A4-0 mock E2E at local `582220c` reported two ROOTs,
+  five PRIMARY decisions, two mock child assets, one selected asset imported,
+  one mock follow-up challenge, two program reviews, zero paid calls and
+  `PROGRAM_LEVEL_MODEL_AUTHORED_SCIENTIFIC_DISPOSITION` as a scripted stop.
+- **Scientific delta:** **NONE**. No live model autonomously selected the
+  organization, performed new science or justified the reported scripted HOLD.
+  The A4-0 test validates that the prescribed decisions can be executed.
+- **Next:** A4-1 (separately approved paid research). Evaluate the real
+  scientific causal chain: question → autonomous scientific/organizational
+  choice → actual evidence/calculation → independent challenge → corrected
+  inference/appropriately scoped negative or HOLD. No M26 performance
+  superiority or general AI Scientist scientific competency is claimed.
+  [docs/M28_A41_SCIENTIFIC_AUTONOMY_EVALUATION_20261109_KO.md](docs/M28_A41_SCIENTIFIC_AUTONOMY_EVALUATION_20261109_KO.md).
+<!-- /M28_A41_SCIENTIFIC_AUTONOMY_EVALUATION_20261109_LOG -->
