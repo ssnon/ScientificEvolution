@@ -1,3 +1,9 @@
+
+<!-- M28_ACTIVATION_DEFAULT_INTEGRATION_REQUIREMENT_20261109 -->
+## M28 activation continuity — future unified default (OPEN)
+
+The meta-research entrypoint shares E2 research runtime but does not automatically enforce the M25 Native Persistent Population Activation Profile. This is an **OPEN integration requirement**, not an implemented behavior. Avoid the M23.6.2–M24 silent deactivation regression. All new supported paid-research entrypoints must eventually use a canonical, source/provenance-linked and drift-checked activation/budget contract, including spawned roots and restart, without overriding scientist-chosen methods. Until implemented, separately inspect actual modes and budget for each run. See [docs/M28_DEFAULT_ACTIVATION_INTEGRATION.md](docs/M28_DEFAULT_ACTIVATION_INTEGRATION.md).
+
 <!-- M28_A41_SCIENTIFIC_AUTONOMY_EVALUATION_20261109_STATE -->
 # 2026-11-09 — M28-A4-0 proven execution contract; A4-1 scientific evaluation pending
 
