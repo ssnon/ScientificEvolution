@@ -276,8 +276,10 @@ def drive(mods,root,args,phase):
     if args.max_new_calls<1 or args.slice_budget<1:raise RuntimeError('BAD_BUDGET')
     j,s=operational_verify(mods,root)
     previous_count=len(s.controller_decisions)
-    if s.program_reviews and s.program_reviews[-1]['scientific_status'] in {
-        'HOLD_WITH_RATIONALE','REVIEW_WORTHY_CANDIDATE','SCOPED_NEGATIVE'}:
+    from e2core.meta_scheduler import reassessment_pending
+    if (s.program_reviews and s.program_reviews[-1]['scientific_status'] in {
+        'HOLD_WITH_RATIONALE','REVIEW_WORTHY_CANDIDATE','SCOPED_NEGATIVE'}
+        and not reassessment_pending(j)):
         return {'status':'ALREADY_SCIENTIFIC_TERMINAL_NO_NEW_CALLS',
                 'root':str(j.root),'new_calls':0}
     used=0;results=[];last_reason=None

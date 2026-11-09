@@ -386,4 +386,3 @@ def latest_program_disposition(primary):
         return {**review, 'stale': True,
                 'status': 'REVIEW_STALE_NEW_CHILD_SCIENCE_OR_ORGANIZATION'}
     return {**review, 'stale': False}
-

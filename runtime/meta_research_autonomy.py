@@ -158,61 +158,19 @@ def materialize(args):
 
 
 def run(args):
-    # This is a real-model interface, not part of A1's offline acceptance. A4
-    # scientific performance requires separately approved, controlled runs.
+    # New model usage is never implied by a scheduler. Two explicit gates.
     guard(args.paid and os.environ.get('FAKG_RESEARCH_ALLOW_PAID') == 'YES',
           'META_ORG_PAID_REQUIRES_TWO_EXPLICIT_GATES')
     guard(1 <= args.max_new_calls <= 10000 and 1 <= args.max_root_visits <= 100 and
           1 <= args.max_roots <= 100 and args.slice_budget >= 1,
           'META_ORG_INVALID_OPERATIONAL_CAP')
-    exp, meta = _read(args.experiment)
+    exp,meta=_read(args.experiment)
     from generational_run import modules, drive
-    m = modules()
+    from e2core.meta_scheduler import run_dynamic
     with _lock(exp):
-        _preflight(exp, meta)
-        _synchronize(exp, args.max_roots)
-        from e2core.meta_collaboration import latest_program_disposition, PROGRAM_STOPS
-        spent = 0; visits = []
-        # Operationally bounded round-robin. It does not decide scientific
-        # research direction, force synthesis, or terminate the program.
-        seen = set()
-        for _ in range(args.max_root_visits):
-            decision = latest_program_disposition(exp / 'ROOTS' / 'PRIMARY')
-            if decision is not None and decision.get('stale'):
-                raise EvidenceError('META_A2_STALE_PROGRAM_REVIEW_NEEDS_EXPLICIT_REASSESSMENT')
-            if decision is not None and decision['disposition'] in PROGRAM_STOPS:
-                visits.append({'status': 'MODEL_AUTHORED_PROGRAM_SCIENTIFIC_PAUSE_OR_RESULT',
-                               'disposition': decision['disposition'],
-                               'not_independent_certification': True})
-                break
-            candidates = [r for r in _roots(exp) if r.name not in seen]
-            if not candidates or spent >= args.max_new_calls:
-                break
-            root = candidates[0]
-            seen.add(root.name)
-            s = EvolutionJournal(root).verify()
-            terminal = bool(s.program_reviews and s.program_reviews[-1]['scientific_status'] in {
-                'HOLD_WITH_RATIONALE', 'SCOPED_NEGATIVE', 'REVIEW_WORTHY_CANDIDATE'})
-            if not terminal:
-                spec = SimpleNamespace(paid=True, model=args.model,
-                    max_new_calls=min(args.max_new_calls - spent, args.slice_budget),
-                    slice_budget=args.slice_budget,
-                    checkpoint_iterations=args.checkpoint_iterations,
-                    max_parallel=args.max_parallel, max_tokens=args.max_tokens,
-                    science_cpu_seconds=args.science_cpu_seconds,
-                    science_wall_seconds=args.science_wall_seconds)
-                result = drive(m, root, spec, 'syn')
-                spent += result['new_calls_this_launch']
-                visits.append({'root': str(root), 'result': result})
-            else:
-                visits.append({'root': str(root), 'status': 'LOCAL_SCIENTIFIC_STOP'})
-            updates=_synchronize(exp,args.max_roots)
-            if any(updates.values()):
-                visits[-1]['scientific_organization_updates']=updates
-        _preflight(exp, meta)
-    print(json.dumps({'status': 'META_ORG_RUN_AT_OPERATIONAL_BOUNDARY',
-        'new_model_calls': spent, 'visits': visits,
-        'no_scientific_success_claim': True}, ensure_ascii=False, indent=2))
+        report=run_dynamic(exp,meta,args,drive,modules,_synchronize,_preflight,_roots)
+        _preflight(exp,meta)
+    print(json.dumps(report,ensure_ascii=False,indent=2))
 
 
 def main():

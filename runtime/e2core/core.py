@@ -62,6 +62,7 @@ class State:
     collaboration_requests:dict=field(default_factory=dict)
     collaboration_imports:dict=field(default_factory=dict)
     program_portfolio_reviews:list=field(default_factory=list)
+    program_reassessments:list=field(default_factory=list)
     carried_opportunities:dict=field(default_factory=dict)
     runtime_contract_version:str|None=None
     def apply(self,kind,p):
@@ -175,6 +176,27 @@ class State:
                   p.get('program_level_model_judgment_only') is True,
                   'META_A2_BAD_PROGRAM_PORTFOLIO_REVIEW')
             self.program_portfolio_reviews.append(p)
+        elif kind=='PROGRAM_REASSESSMENT_REQUESTED':
+            # Operational evidence notification, NOT a scientific CONTINUE.
+            # The authoring model must still make a new, complete decision.
+            prior=self.program_reviews[-1] if self.program_reviews else None
+            request_ids=p.get('new_report_ids')
+            current_ids=p.get('current_report_ids')
+            current={x['report_id'] for x in self.child_research_reports.values()}
+            already=any(x['prior_review_decision_id']==p.get('prior_review_decision_id')
+                        for x in self.program_reassessments)
+            guard(self.meta_collaboration and prior and
+                  prior['scientific_status'] in {'HOLD_WITH_RATIONALE','SCOPED_NEGATIVE','REVIEW_WORTHY_CANDIDATE'} and
+                  p.get('prior_review_decision_id')==prior['reviewer_id'] and not already and
+                  isinstance(request_ids,list) and request_ids and
+                  len(request_ids)==len(set(request_ids)) and
+                  isinstance(current_ids,list) and len(current_ids)==len(set(current_ids)) and
+                  set(request_ids).issubset(current) and set(current_ids)==current and
+                  p.get('reason')=='NEW_CHILD_SCIENTIFIC_REPORT_REQUIRES_MODEL_REVIEW_NOT_AUTOMATIC_RESUMPTION' and
+                  p.get('science_certification') is False and
+                  p.get('previous_scientific_result_preserved') is True,
+                  'META_A3_INVALID_EVIDENCE_REASSESSMENT')
+            self.program_reassessments.append(p)
         elif kind=='ORGANIZATION_ROOT_MATERIALIZED':
             from .meta_autonomy import _root_name, HEX
             rid=p.get('id');request=self.organization_requests.get(rid)

@@ -1,6 +1,6 @@
 # ScientificEvolution — M28-A2 동적 과학 협력과 프로그램 수준 판단
 
-**기준:** `ssnon/ScientificEvolution`, `d4f4c28` / `dev/meta-research-autonomy-v1` (2026-11-09 KST).  
+**기준:** `ssnon/ScientificEvolution`, `d4f4c28` / `dev/meta-research-autonomy-v1` (2026-11-09 KST).
 **성격:** M28-A1의 새 ROOT 기반 메타 자율성에 대한 추가 수직 통합. 기존 M26 ROOT, 기존 Source Pin, 기존 과학적 주장의 검증 상태를 변경하지 않음. 실제 유료 연구 및 과학적 유익성 비교를 수행했다는 뜻이 아님.
 
 ## 1. 목표와 실행 의미

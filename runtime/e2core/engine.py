@@ -572,6 +572,10 @@ def controller_plan(j:EvolutionJournal, raw_obj:dict, call_id:str,decision_id:st
     guard(isinstance(selections,list),'META_A2_COLLAB_REQUESTS_NOT_ARRAY')
     guard(s.meta_collaboration or not selections,'META_A2_COLLAB_NOT_ACTIVATED')
     review=raw_obj.get('program_portfolio_review')
+    if s.meta_collaboration and j.root.name=='PRIMARY':
+        from .meta_scheduler import reassessment_pending
+        guard(not reassessment_pending(j) or review is not None,
+              'META_A3_REASSESSMENT_REQUIRES_NEW_PROGRAM_PORTFOLIO_REVIEW')
     guard(s.meta_collaboration or review is None,'META_A2_PROGRAM_NOT_ACTIVATED')
     if selections or review is not None:
         from .meta_collaboration import validate_selection, validate_program_review, PROGRAM_STOPS
@@ -1115,7 +1119,8 @@ class Engine:
             # This checks durable journal event order, not process-local state.
             for row in reversed(rows):
                 if row['kind'] in {'ASSET_PUBLISHED','PROBLEM_CREATED','WORK_FINISHED','HISTORICAL_ASSET_INDEXED',
-                                  'CHILD_RESEARCH_OBSERVED','COLLABORATION_ASSET_IMPORTED'}:
+                                  'CHILD_RESEARCH_OBSERVED','COLLABORATION_ASSET_IMPORTED',
+                                  'PROGRAM_REASSESSMENT_REQUESTED'}:
                     break
                 if row['kind']=='OPERATIONAL_PAUSE' and str(row['payload'].get('reason','')).startswith((
                         'CONTROLLER_PLAN_REJECTED:', 'CONTROLLER_INVALID_JSON')):
@@ -1131,7 +1136,7 @@ class Engine:
         last=max((i for i,r in enumerate(rows) if r['kind']=='CONTROLLER_DECISION'),default=-1)
         if any(r['kind'] in {'ASSET_PUBLISHED','PROBLEM_CREATED','WORK_FINISHED',
                              'HISTORICAL_ASSET_INDEXED','CHILD_RESEARCH_OBSERVED',
-                             'COLLABORATION_ASSET_IMPORTED'}
+                             'COLLABORATION_ASSET_IMPORTED','PROGRAM_REASSESSMENT_REQUESTED'}
                for r in rows[last+1:]):
             return True
         if any(w['status'] in {'QUEUED','ACTIVE'} for w in s.work.values()):return False
@@ -1142,7 +1147,10 @@ class Engine:
     def run(self,max_iterations=6,max_parallel=3):
         """Iteration/call quotas are external pauses, never scientific termination."""
         state=self.j.verify()
-        if state.program_reviews and state.program_reviews[-1]['scientific_status'] in {'HOLD_WITH_RATIONALE','REVIEW_WORTHY_CANDIDATE','SCOPED_NEGATIVE'}:
+        from .meta_scheduler import reassessment_pending
+        if (state.program_reviews and state.program_reviews[-1]['scientific_status'] in
+                {'HOLD_WITH_RATIONALE','REVIEW_WORTHY_CANDIDATE','SCOPED_NEGATIVE'}
+                and not reassessment_pending(self.j)):
             return {'status':'ALREADY_SCIENTIFICALLY_STOPPED_REQUIRES_NEW_EXPLICIT_CONTINUATION',
                 'decisions':[],'new_model_calls':self.model.new_calls,'root':str(self.j.root),
                 'scientific_certification':False}
@@ -1155,7 +1163,8 @@ class Engine:
                     ctl=self.controller(self._next_controller_id())
                     status.append({'controller':ctl})
                     if ctl['status']!='CONTROLLER_COMMITTED':
-                        if (self.j.verify().e3r1_policy and self.ready_workers(max_parallel)
+                        if (not reassessment_pending(self.j) and
+                                self.j.verify().e3r1_policy and self.ready_workers(max_parallel)
                                 and ctl['status'] in {'CONTROLLER_PLAN_REJECTED','CONTROLLER_INVALID_JSON'}):
                             # Reject the entire uncommitted proposal; only execute
                             # work which was ALREADY authorized in earlier journal
