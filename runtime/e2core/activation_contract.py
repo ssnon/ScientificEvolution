@@ -119,3 +119,68 @@ def check_activation(manifest_or_profile, *, model=None, experiment=None, requir
             'features': dict(expected),
             'budget_config_required': expected['M232_BUDGET_REQUIRED'] == 'YES',
             'no_scientific_certification': True}
+
+
+# M28 reuses this SAME M25 activation contract.  It does not reimplement
+# feature defaults, cache policy, rate validation, or a new scientific policy.
+M28_PROTOCOL = 'SCIENTIFIC_META_RESEARCH_AUTONOMY_A1'
+
+
+def check_m28_experiment(experiment, *, model=None, allow_unprofiled=False):
+    """Validate the M28 experiment-wide execution profile and pinned USD policy.
+
+    Legacy M28 experiments created before activation integration are readable,
+    but never eligible for a new paid call or a synchronization mutation.
+    """
+    exp = Path(experiment).expanduser().resolve()
+    manifest_path = exp / 'persistent.json'
+    meta_path = exp / 'meta_research.json'
+    manifest = json.loads(manifest_path.read_text(encoding='utf8'))
+    meta = json.loads(meta_path.read_text(encoding='utf8'))
+    if (manifest.get('protocol') != M28_PROTOCOL or
+            meta.get('protocol') != M28_PROTOCOL or meta.get('root') != str(exp)):
+        _reject('M28_EXPERIMENT_IDENTITY_MISMATCH')
+    if 'activation_profile' not in manifest:
+        if allow_unprofiled:
+            return {'status': 'M28_LEGACY_UNPROFILED_READONLY_NO_PAID',
+                    'science_certification': False,
+                    'historical_pin_not_revalidated_under_new_runtime': True}
+        _reject('M28_UNPROFILED_NEW_EXECUTION_FORBIDDEN')
+    profile = manifest['activation_profile']
+    if not isinstance(profile, dict) or not isinstance(profile.get('features'), dict):
+        _reject('M28_PROFILE_INVALID')
+    if profile['features'].get('M232_BUDGET_REQUIRED') != 'YES':
+        _reject('M28_DOLLAR_BUDGET_REQUIRED')
+    if meta.get('activation_profile_sha256') != manifest.get('activation_profile_sha256'):
+        _reject('M28_CROSS_MANIFEST_PROFILE_DRIFT')
+    budget_path = exp / 'M232_DEV_BUDGET.json'
+    if not budget_path.is_file() or budget_path.is_symlink():
+        _reject('M28_BUDGET_CONFIG_MISSING_OR_UNSAFE')
+    actual_budget_digest = hashlib.sha256(budget_path.read_bytes()).hexdigest()
+    if (manifest.get('budget_config_sha256') != actual_budget_digest or
+            meta.get('budget_config_sha256') != actual_budget_digest):
+        _reject('M28_BUDGET_CONFIG_DRIFT')
+    verified = check_activation(manifest, model=model, experiment=exp, require_budget=True)
+    from .m232_budget import _config
+    cfg = _config(exp)
+    return {**verified, 'status': 'M28_ACTIVATION_AND_BUDGET_VERIFIED_NO_PAID',
+            'budget_config_sha256': actual_budget_digest,
+            'budget_limit_usd': cfg['limit_usd'],
+            'science_certification': False}
+
+
+def enforce_m28_provider_activation(journal_root, model):
+    """Fail closed at the actual external model boundary, including child ROOTs.
+
+    Parent/child execution shares one experiment-level profile. Non-M28
+    experiments keep their existing activation and historical behavior.
+    """
+    root = Path(journal_root).expanduser().resolve()
+    for candidate in (root, *root.parents):
+        p = candidate / 'persistent.json'
+        if not p.is_file():
+            continue
+        data = json.loads(p.read_text(encoding='utf8'))
+        if data.get('protocol') == M28_PROTOCOL:
+            return check_m28_experiment(candidate, model=model)
+    return None

@@ -81,6 +81,11 @@ class DurableModel:
                 return content_from_wire(self.j.raw(previous['response_blob']))
             guard(self.approved and os.environ.get('FAKG_RESEARCH_ALLOW_PAID')=='YES','PAID_EXECUTION_NOT_EXPLICITLY_APPROVED')
             guard(self.max_new_calls is None or self.new_calls<self.max_new_calls,'OPERATIONAL_CALL_BUDGET_REACHED')
+            if self.mode == 'EXTERNAL':
+                # Central M25 profile contract, enforced at the real provider
+                # boundary for every M28 parent/child model call.
+                from .activation_contract import enforce_m28_provider_activation
+                enforce_m28_provider_activation(self.j.root, self.model)
             reservation=reserve_call(self.j.root,ident,wire,self.model,self.max_tokens,self.mode)
             self.new_calls+=1
             self.j.append('MODEL_CALL_INTENT',{'id':ident,'actor':actor,'work_id':work_id,'request_blob':self.j.blob(wire),

@@ -17,6 +17,9 @@ from types import SimpleNamespace
 from e2core.core import EvolutionJournal, EvidenceError, guard, sha, canon
 from e2core.meta_autonomy import (POLICY, MODE_BLIND, MODE_TARGETED,
                                  materialize_requests, verify_receipts, recover_committed_requests)
+from e2core.activation_contract import (
+    read_profile as read_activation_profile, digest as activation_digest,
+    check_activation, check_m28_experiment)
 
 PROTOCOL = 'SCIENTIFIC_META_RESEARCH_AUTONOMY_A1'
 
@@ -56,6 +59,14 @@ def init(args):
     text = Path(args.problem_file).read_text(encoding='utf8')
     guard(bool(text) and text == text.strip() and len(text) <= 12000,
           'META_ORG_P0_INVALID_OR_EDGE_WHITESPACE')
+    profile = read_activation_profile(args.activation_profile)
+    guard(profile['features']['M232_BUDGET_REQUIRED'] == 'YES',
+          'META_ORG_EXPLICIT_DOLLAR_BUDGET_REQUIRED')
+    check_activation(profile, require_budget=False)
+    budget_source = Path(args.budget_config).expanduser().resolve()
+    guard(budget_source.is_file(), 'META_ORG_BUDGET_FILE_REQUIRED_AT_INIT')
+    budget_payload = json.loads(budget_source.read_text(encoding='utf8'))
+    guard(isinstance(budget_payload, dict), 'META_ORG_BUDGET_NOT_OBJECT')
     exp.mkdir(parents=True)
     try:
         root = exp / 'ROOTS' / 'PRIMARY'
@@ -68,13 +79,22 @@ def init(args):
         j.append('META_RESEARCH_AUTONOMY_ACTIVATED', {'policy': POLICY})
         from e2core.meta_collaboration import POLICY as COLLAB_POLICY
         j.append('META_RESEARCH_COLLABORATION_ACTIVATED', {'policy': COLLAB_POLICY})
+        _save_new(exp / 'M232_DEV_BUDGET.json', budget_payload)
+        budget_sha = sha((exp / 'M232_DEV_BUDGET.json').read_bytes())
         _save_new(exp / 'persistent.json', {'protocol': PROTOCOL,
-                  'science_certification': False, 'meta_autonomy_enabled': True})
+                  'science_certification': False, 'meta_autonomy_enabled': True,
+                  'activation_profile': profile,
+                  'activation_profile_sha256': activation_digest(profile),
+                  'budget_config_sha256': budget_sha})
         _save_new(exp / 'meta_research.json', {'protocol': PROTOCOL, 'root': str(exp),
                   'original_P0_sha256': sha(text.encode('utf8')),
                   'initial_root': str(root), 'science_certification': False,
                   'researcher_count_not_preselected': True,
-                  'mandatory_generations': False, 'mandatory_synthesis': False})
+                  'mandatory_generations': False, 'mandatory_synthesis': False,
+                  'activation_profile_sha256': activation_digest(profile),
+                  'budget_config_sha256': budget_sha})
+        # Verify the effective M25 activation/budget contract before pinning.
+        check_m28_experiment(exp, model=profile['model'])
         from generational_run import pin_native_source
         pin = pin_native_source(exp)
         guard(j.verify().meta_research_autonomy, 'META_ORG_ACTIVATION_FAILED')
@@ -90,6 +110,8 @@ def init(args):
 
 def _preflight(exp, meta):
     from generational_run import modules, verify_runtime_source
+    activation = check_m28_experiment(exp, allow_unprofiled=True)
+    legacy = activation['status'] == 'M28_LEGACY_UNPROFILED_READONLY_NO_PAID'
     m = modules()
     root = exp / 'ROOTS' / 'PRIMARY'
     primary = EvolutionJournal(root).verify()
@@ -102,7 +124,10 @@ def _preflight(exp, meta):
         s = j.verify()
         guard(s.meta_research_autonomy and s.program['problem'] == primary.program['problem'],
               'META_ORG_CHILD_PROGRAM_MISMATCH')
-        verify_runtime_source(m, subroot)
+        # An old Source Pin must never be silently repinned/reinterpreted.
+        # Historical inspection is allowed; current-source execution is not.
+        if not legacy:
+            verify_runtime_source(m, subroot)
         observations[subroot.name] = {'decisions': len(s.controller_decisions),
                                       'works': len(s.work),
                                       'requests': len(s.organization_requests),
@@ -117,8 +142,13 @@ def _preflight(exp, meta):
 
 def preflight(args):
     exp, meta = _read(args.experiment)
-    print(json.dumps({'status':'META_ORG_PREFLIGHT_OK_NO_PAID',
-        'roots': _preflight(exp, meta)}, ensure_ascii=False, indent=2))
+    observations = _preflight(exp, meta)
+    activation = check_m28_experiment(exp, allow_unprofiled=True)
+    print(json.dumps({'status': ('META_ORG_PREFLIGHT_OK_NO_PAID' if
+        activation['status'] != 'M28_LEGACY_UNPROFILED_READONLY_NO_PAID' else
+        'META_ORG_LEGACY_READONLY_INSPECTION_NO_PAID'),
+        'activation': activation,
+        'roots': observations}, ensure_ascii=False, indent=2))
 
 
 def _synchronize(exp, max_roots):
@@ -140,6 +170,7 @@ def _synchronize(exp, max_roots):
 
 def sync(args):
     exp, meta = _read(args.experiment)
+    check_m28_experiment(exp)  # legacy roots may only be inspected
     with _lock(exp):
         _preflight(exp, meta)
         result=_synchronize(exp, args.max_roots)
@@ -149,6 +180,7 @@ def sync(args):
 
 def materialize(args):
     exp, meta = _read(args.experiment)
+    check_m28_experiment(exp)  # legacy roots may only be inspected
     with _lock(exp):
         _preflight(exp, meta)
         result=_synchronize(exp,args.max_roots)
@@ -165,6 +197,7 @@ def run(args):
           1 <= args.max_roots <= 100 and args.slice_budget >= 1,
           'META_ORG_INVALID_OPERATIONAL_CAP')
     exp,meta=_read(args.experiment)
+    check_m28_experiment(exp, model=args.model)  # before any paid call
     from generational_run import modules, drive
     from e2core.meta_scheduler import run_dynamic
     with _lock(exp):
@@ -177,6 +210,8 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     sub = p.add_subparsers(dest='cmd', required=True)
     i = sub.add_parser('init');i.add_argument('--problem-file', required=True);i.add_argument('--out', required=True)
+    i.add_argument('--activation-profile', required=True, help='Existing M25 canonical profile JSON')
+    i.add_argument('--budget-config', required=True, help='Verified M232 USD budget JSON; copied and pinned at init')
     for name in ('preflight','materialize','sync','run'):
         a = sub.add_parser(name)
         a.add_argument('--experiment', required=True)
