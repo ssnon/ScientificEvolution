@@ -649,6 +649,9 @@ def feedback_controller(self, ident):
     prompt=CONTROLLER_PROMPT+(E3R1_CONTROLLER_ADDENDUM if j.verify().e3r1_policy else '')+'\n'+CONTROLLER_FEEDBACK_ADDENDUM
     if j.verify().meta_research_autonomy:
         prompt+=e2_engine.META_RESEARCH_CONTROLLER_ADDENDUM
+        if j.verify().meta_collaboration:
+            from e2core.meta_collaboration import CONTROLLER_ADDENDUM as META_COLLAB_ADDENDUM
+            prompt+=META_COLLAB_ADDENDUM
         full={**full,'meta_research_organization_context':e2_engine.meta_organization_context(j)}
     raw=self.model.call('CTRL_'+ident,'CONTROLLER',None,prompt,full)
     control=strict_envelope(raw)

@@ -66,6 +66,8 @@ def init(args):
         j.append('R5_POLICY_ACTIVATED', {'policy': 'OBJECTIVE_AND_DISPOSITION_V1'})
         j.append('E3R1_POLICY_ACTIVATED', {'policy': 'PORTFOLIO_DECISIONS_V1'})
         j.append('META_RESEARCH_AUTONOMY_ACTIVATED', {'policy': POLICY})
+        from e2core.meta_collaboration import POLICY as COLLAB_POLICY
+        j.append('META_RESEARCH_COLLABORATION_ACTIVATED', {'policy': COLLAB_POLICY})
         _save_new(exp / 'persistent.json', {'protocol': PROTOCOL,
                   'science_certification': False, 'meta_autonomy_enabled': True})
         _save_new(exp / 'meta_research.json', {'protocol': PROTOCOL, 'root': str(exp),
@@ -105,6 +107,8 @@ def _preflight(exp, meta):
                                       'works': len(s.work),
                                       'requests': len(s.organization_requests),
                                       'receipts': verify_receipts(exp, subroot),
+                                      'child_reports': len(s.child_research_reports),
+                                      'collaboration_imports': len(s.collaboration_imports),
                                       'disposition': (s.program_reviews[-1]['scientific_status']
                                                       if s.program_reviews else None),
                                       'saved_calls': sum(c['state'] == 'SAVED' for c in s.model_calls.values())}
@@ -117,17 +121,40 @@ def preflight(args):
         'roots': _preflight(exp, meta)}, ensure_ascii=False, indent=2))
 
 
+def _synchronize(exp, max_roots):
+    """Record observed child results and execute only model-approved imports."""
+    from e2core.meta_collaboration import (observe_children, import_selected,
+                                           recover_committed_a2)
+    result = {'organization_created': [], 'new_child_reports': [],
+              'selected_assets_imported': [], 'recovered': []}
+    for root in _roots(exp):
+        recover_committed_requests(EvolutionJournal(root))
+        result['organization_created'].extend(materialize_requests(exp, root, max_roots))
+    for root in _roots(exp):
+        j=EvolutionJournal(root)
+        result['new_child_reports'].extend(observe_children(exp, root))
+        result['recovered'].extend(recover_committed_a2(j))
+        result['selected_assets_imported'].extend(import_selected(exp, root))
+    return result
+
+
+def sync(args):
+    exp, meta = _read(args.experiment)
+    with _lock(exp):
+        _preflight(exp, meta)
+        result=_synchronize(exp, args.max_roots)
+        _preflight(exp, meta)
+    print(json.dumps({'status':'META_A2_SYNCHRONIZED_NO_PAID',**result},ensure_ascii=False,indent=2))
+
+
 def materialize(args):
     exp, meta = _read(args.experiment)
     with _lock(exp):
         _preflight(exp, meta)
-        results = []
-        for root in _roots(exp):
-            recover_committed_requests(EvolutionJournal(root))
-            results.extend(materialize_requests(exp, root, args.max_roots))
+        result=_synchronize(exp,args.max_roots)
         _preflight(exp, meta)
-    print(json.dumps({'status': 'META_ORG_MATERIALIZATION_COMPLETE_NO_PAID',
-                      'created': results}, ensure_ascii=False, indent=2))
+    print(json.dumps({'status': 'META_A2_MATERIALIZATION_AND_SYNC_NO_PAID',
+                      **result}, ensure_ascii=False, indent=2))
 
 
 def run(args):
@@ -143,14 +170,21 @@ def run(args):
     m = modules()
     with _lock(exp):
         _preflight(exp, meta)
-        for root in _roots(exp):
-            recover_committed_requests(EvolutionJournal(root))
-            materialize_requests(exp, root, args.max_roots)
+        _synchronize(exp, args.max_roots)
+        from e2core.meta_collaboration import latest_program_disposition, PROGRAM_STOPS
         spent = 0; visits = []
         # Operationally bounded round-robin. It does not decide scientific
         # research direction, force synthesis, or terminate the program.
         seen = set()
         for _ in range(args.max_root_visits):
+            decision = latest_program_disposition(exp / 'ROOTS' / 'PRIMARY')
+            if decision is not None and decision.get('stale'):
+                raise EvidenceError('META_A2_STALE_PROGRAM_REVIEW_NEEDS_EXPLICIT_REASSESSMENT')
+            if decision is not None and decision['disposition'] in PROGRAM_STOPS:
+                visits.append({'status': 'MODEL_AUTHORED_PROGRAM_SCIENTIFIC_PAUSE_OR_RESULT',
+                               'disposition': decision['disposition'],
+                               'not_independent_certification': True})
+                break
             candidates = [r for r in _roots(exp) if r.name not in seen]
             if not candidates or spent >= args.max_new_calls:
                 break
@@ -172,10 +206,9 @@ def run(args):
                 visits.append({'root': str(root), 'result': result})
             else:
                 visits.append({'root': str(root), 'status': 'LOCAL_SCIENTIFIC_STOP'})
-            recover_committed_requests(EvolutionJournal(root))
-            created = materialize_requests(exp, root, args.max_roots)
-            if created:
-                visits[-1]['organization_roots_created'] = created
+            updates=_synchronize(exp,args.max_roots)
+            if any(updates.values()):
+                visits[-1]['scientific_organization_updates']=updates
         _preflight(exp, meta)
     print(json.dumps({'status': 'META_ORG_RUN_AT_OPERATIONAL_BOUNDARY',
         'new_model_calls': spent, 'visits': visits,
@@ -186,10 +219,10 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     sub = p.add_subparsers(dest='cmd', required=True)
     i = sub.add_parser('init');i.add_argument('--problem-file', required=True);i.add_argument('--out', required=True)
-    for name in ('preflight','materialize','run'):
+    for name in ('preflight','materialize','sync','run'):
         a = sub.add_parser(name)
         a.add_argument('--experiment', required=True)
-        if name in ('materialize', 'run'):
+        if name in ('materialize', 'sync', 'run'):
             a.add_argument('--max-roots', type=int, default=8,
                            help='Operational safety ceiling, not a scientific researcher count')
         if name == 'run':
@@ -206,7 +239,7 @@ def main():
     a = p.parse_args()
     try:
         return {'init': init, 'preflight': preflight,
-                'materialize': materialize, 'run': run}[a.cmd](a) or 0
+                'materialize': materialize, 'sync': sync, 'run': run}[a.cmd](a) or 0
     except (EvidenceError, RuntimeError, FileNotFoundError, ValueError, KeyError) as e:
         print(json.dumps({'status': 'META_ORG_OPERATIONAL_ERROR_NOT_SCIENTIFIC_HOLD',
             'error_type': type(e).__name__, 'reason': str(e)}, ensure_ascii=False), file=sys.stderr)

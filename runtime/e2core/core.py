@@ -57,6 +57,11 @@ class State:
     meta_research_autonomy:bool=False
     organization_requests:dict=field(default_factory=dict)
     organization_materialized:dict=field(default_factory=dict)
+    meta_collaboration:bool=False
+    child_research_reports:dict=field(default_factory=dict)
+    collaboration_requests:dict=field(default_factory=dict)
+    collaboration_imports:dict=field(default_factory=dict)
+    program_portfolio_reviews:list=field(default_factory=list)
     carried_opportunities:dict=field(default_factory=dict)
     runtime_contract_version:str|None=None
     def apply(self,kind,p):
@@ -90,6 +95,86 @@ class State:
             call=self.model_calls.get(p['call_id'])
             guard(call and call['state']=='SAVED', 'META_ORG_CONTROLLER_NOT_SAVED')
             self.organization_requests[p['id']]=p
+        elif kind=='META_RESEARCH_COLLABORATION_ACTIVATED':
+            from .meta_collaboration import POLICY as COLLAB_POLICY
+            guard(self.meta_research_autonomy and not self.meta_collaboration and
+                  p.get('policy') == COLLAB_POLICY and
+                  not self.model_calls and not self.work and not self.assets and
+                  not self.sources and not self.controller_decisions and not self.program_reviews,
+                  'META_A2_ACTIVATION_NEW_ROOT_ONLY')
+            self.meta_collaboration=True
+        elif kind=='CHILD_RESEARCH_OBSERVED':
+            from .meta_autonomy import HEX
+            rid=p.get('organization_request_id')
+            guard(self.meta_collaboration and rid in self.organization_materialized and
+                  isinstance(p.get('report_id'),str) and p['report_id'].startswith('RPT_') and
+                  HEX.fullmatch(p.get('report_blob','')) and
+                  HEX.fullmatch(p.get('child_head_sha256','')) and
+                  p.get('science_certification') is False,
+                  'META_A2_BAD_CHILD_REPORT')
+            previous=self.child_research_reports.get(rid)
+            guard(previous is None or previous['report_id'] != p['report_id'],
+                  'META_A2_DUPLICATE_CHILD_REPORT')
+            self.child_research_reports[rid]=p
+        elif kind=='COLLABORATION_REQUESTED':
+            from .meta_collaboration import COL_ID
+            ident=p.get('id');org=p.get('organization_request_id')
+            obs=self.child_research_reports.get(org)
+            call=self.model_calls.get(p.get('call_id'))
+            guard(self.meta_collaboration and isinstance(ident,str) and COL_ID.fullmatch(ident) and
+                  ident not in self.collaboration_requests and obs and
+                  p.get('report_id') == obs['report_id'] and
+                  isinstance(p.get('asset_ids'),list) and bool(p['asset_ids']) and
+                  len(set(p['asset_ids']))==len(p['asset_ids']) and
+                  all(isinstance(x,str) for x in p['asset_ids']) and
+                  isinstance(p.get('purpose'),str) and p['purpose'].strip() and
+                  call and call['state']=='SAVED' and
+                  p.get('call_id')=='CTRL_'+p.get('decision_id','') and
+                  p.get('science_certification') is False,
+                  'META_A2_BAD_COLLABORATION_SELECTION')
+            self.collaboration_requests[ident]=p
+        elif kind=='COLLABORATION_ASSET_IMPORTED':
+            req=self.collaboration_requests.get(p.get('selection_id'))
+            expected=p.get('selection_id','')+'#'+str(p.get('original_asset_id',''))
+            aid=p.get('local_asset_id');sid=p.get('source_id')
+            guard(self.meta_collaboration and req and p.get('id')==expected and
+                  expected not in self.collaboration_imports and
+                  p.get('original_asset_id') in req['asset_ids'] and
+                  p.get('organization_request_id')==req['organization_request_id'] and
+                  p.get('selected_report_id')==req['report_id'] and
+                  aid in self.assets and sid in self.sources and
+                  self.sources[sid]['kind']=='HISTORICAL_AI' and
+                  sid in self.assets[aid].get('source_ids',[]) and
+                  self.assets[aid].get('origin')=='AUDIT_EXTRACTED_HISTORICAL_AI_NOT_LIVE_WORK' and
+                  p.get('status')=='HISTORICAL_AI_IMPORTED_NOT_ACCEPTED' and
+                  p.get('science_certification') is False,
+                  'META_A2_BAD_IMPORT_RECEIPT')
+            self.collaboration_imports[expected]=p
+        elif kind=='PROGRAM_PORTFOLIO_REVIEWED':
+            from .meta_collaboration import PROGRAM_OPTIONS, PROGRAM_ORIGIN
+            orgs=p.get('considered_organization_request_ids')
+            reports=p.get('considered_report_ids')
+            call=self.model_calls.get(p.get('call_id'))
+            current={x['report_id'] for x in self.child_research_reports.values()}
+            local=self.program_reviews[-1]['scientific_status'] if self.program_reviews else None
+            correspondence={'CONTINUE':'ONGOING', 'PAUSE_WITH_RATIONALE':'HOLD_WITH_RATIONALE',
+                            'SCOPED_NEGATIVE':'SCOPED_NEGATIVE',
+                            'REVIEW_WORTHY_CANDIDATE':'REVIEW_WORTHY_CANDIDATE'}
+            guard(self.meta_collaboration and self.program.get('origin')==PROGRAM_ORIGIN and
+                  p.get('disposition') in PROGRAM_OPTIONS and local==correspondence[p['disposition']] and
+                  isinstance(p.get('rationale'),str) and p['rationale'].strip() and
+                  isinstance(orgs,list) and len(orgs)==len(set(orgs)) and
+                  set(orgs)==set(self.organization_materialized) and
+                  isinstance(reports,list) and len(reports)==len(set(reports)) and set(reports)==current and
+                  isinstance(p.get('unresolved_frontiers'),list) and
+                  all(isinstance(x,str) for x in p['unresolved_frontiers']) and
+                  call and call['state']=='SAVED' and
+                  p.get('call_id')=='CTRL_'+p.get('decision_id','') and
+                  not any(x['decision_id']==p['decision_id'] for x in self.program_portfolio_reviews) and
+                  p.get('science_certification') is False and
+                  p.get('program_level_model_judgment_only') is True,
+                  'META_A2_BAD_PROGRAM_PORTFOLIO_REVIEW')
+            self.program_portfolio_reviews.append(p)
         elif kind=='ORGANIZATION_ROOT_MATERIALIZED':
             from .meta_autonomy import _root_name, HEX
             rid=p.get('id');request=self.organization_requests.get(rid)

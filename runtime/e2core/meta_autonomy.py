@@ -137,6 +137,9 @@ def _prepare_stage(stage, binding, parent):
     j.append('R5_POLICY_ACTIVATED', {'policy': 'OBJECTIVE_AND_DISPOSITION_V1'})
     j.append('E3R1_POLICY_ACTIVATED', {'policy': 'PORTFOLIO_DECISIONS_V1'})
     j.append('META_RESEARCH_AUTONOMY_ACTIVATED', {'policy': POLICY})
+    if parent.meta_collaboration:
+        from .meta_collaboration import POLICY as COLLAB_POLICY
+        j.append('META_RESEARCH_COLLABORATION_ACTIVATED', {'policy': COLLAB_POLICY})
     if req['mode'] == MODE_TARGETED:
         _verified_target_child(j, binding, parent)
     verified = j.verify()
@@ -162,6 +165,8 @@ def _verify_child(child, binding, parent, allow_research=False):
     if not allow_research:
         guard(not s.model_calls and not s.controller_decisions and not s.work,
               'META_ORG_UNRECEIPTED_CHILD_ALREADY_EXECUTED')
+    guard(s.meta_collaboration == parent.meta_collaboration,
+          'META_A2_CHILD_POLICY_INHERITANCE_MISMATCH')
     if binding['child_mode'] == MODE_BLIND:
         guard(s.program.get('origin') == 'INDEPENDENT_UNSEEDED_FRESH_COHORT',
               'META_ORG_FAKE_BLIND_ORIGIN')
@@ -233,7 +238,7 @@ def verify_receipts(experiment, parent_root):
         guard(receipt['relative_root'] == expected, 'META_ORG_RECEIPT_ROOT_CHANGED')
         child = exp / expected
         j=_verify_child(child, _binding(root, source, req), s, allow_research=True)
-        initial_n=4+(2*len(req['target_asset_ids']) if req['mode']==MODE_TARGETED else 0)
+        initial_n=4+(1 if s.meta_collaboration else 0)+(2*len(req['target_asset_ids']) if req['mode']==MODE_TARGETED else 0)
         events=j._events()
         guard(len(events)>=initial_n and sha(canon(events[initial_n-1]))==receipt['child_head_sha256'],
               'META_ORG_CHILD_INITIAL_HEAD_CHANGED')
@@ -243,7 +248,7 @@ def verify_receipts(experiment, parent_root):
 def organization_context(j):
     """What the same scientist already requested/executed, not source evidence."""
     s=j.verify()
-    return {'enabled': bool(s.meta_research_autonomy),
+    base={'enabled': bool(s.meta_research_autonomy),
             'requested': [{'id': rid, 'mode': req['mode'],
                            'purpose': req['purpose'],
                            'materialized': rid in s.organization_materialized}
@@ -251,6 +256,10 @@ def organization_context(j):
             'no_mandatory_peers_or_generations': True,
             'origin_root': s.program.get('origin') if s.program else None,
             'this_context_is_not_primary_evidence': True}
+    if s.meta_collaboration:
+        from .meta_collaboration import controller_context as collaboration_context
+        base.update(collaboration_context(j))
+    return base
 
 
 def recover_committed_requests(j):

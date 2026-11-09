@@ -567,10 +567,41 @@ def controller_plan(j:EvolutionJournal, raw_obj:dict, call_id:str,decision_id:st
         for request in org_requests:
             planned.append(('ORGANIZATION_REQUESTED',
                 validate_meta_request(s,request,decision_id,call_id,j.root.name)))
+    # M28-A2: model selection of *observed* child work is distinct from import.
+    selections=raw_obj.get('collaboration_requests',[])
+    guard(isinstance(selections,list),'META_A2_COLLAB_REQUESTS_NOT_ARRAY')
+    guard(s.meta_collaboration or not selections,'META_A2_COLLAB_NOT_ACTIVATED')
+    review=raw_obj.get('program_portfolio_review')
+    guard(s.meta_collaboration or review is None,'META_A2_PROGRAM_NOT_ACTIVATED')
+    if selections or review is not None:
+        from .meta_collaboration import validate_selection, validate_program_review, PROGRAM_STOPS
+        guard(not (raw_obj['disposition']!='ONGOING' and selections),
+              'META_A2_TERMINAL_CANNOT_IMPORT_NEW_RESEARCH')
+        seen=set()
+        for selection in selections:
+            guard(isinstance(selection,dict) and selection.get('id') not in seen,
+                  'META_A2_DUPLICATE_SELECTION_IN_DECISION')
+            seen.add(selection['id'])
+            planned.append(('COLLABORATION_REQUESTED',
+                            validate_selection(j,selection,decision_id,call_id)))
+        if review is not None:
+            valid_review=validate_program_review(j,review,decision_id,call_id)
+            consistency={'CONTINUE':'ONGOING','PAUSE_WITH_RATIONALE':'HOLD_WITH_RATIONALE',
+                         'SCOPED_NEGATIVE':'SCOPED_NEGATIVE',
+                         'REVIEW_WORTHY_CANDIDATE':'REVIEW_WORTHY_CANDIDATE'}
+            guard(consistency[valid_review['disposition']]==raw_obj['disposition'],
+                  'META_A2_GLOBAL_LOCAL_DISPOSITION_CONFLICT')
+            planned.append(('PROGRAM_PORTFOLIO_REVIEWED',valid_review))
+    if s.meta_collaboration and j.root.name=='PRIMARY' and raw_obj['disposition'] in {
+            'HOLD_WITH_RATIONALE','SCOPED_NEGATIVE','REVIEW_WORTHY_CANDIDATE'}:
+        guard(review is not None, 'META_A2_PRIMARY_TERMINAL_REQUIRES_PROGRAM_REVIEW')
     final_state=_simulated(s,planned)
     if s.e3r1_policy and raw_obj['disposition']=='ONGOING':
         guard(any(w['status'] in {'QUEUED','ACTIVE'} for w in final_state.work.values())
-              or bool(org_requests),
+              or bool(org_requests) or bool(selections)
+              or (s.meta_collaboration and any(
+                  any(status in {'QUEUED','ACTIVE'} for status in item['report']['work_statuses'].values())
+                  for item in meta_organization_context(j)['child_research_reports'])),
               'E3R1_ONGOING_NO_RUNNABLE_OR_NEW_WORK_AFTER_PORTFOLIO')
     return planned
 
@@ -792,6 +823,9 @@ class Engine:
         prompt=CONTROLLER_PROMPT+(E3R1_CONTROLLER_ADDENDUM if self.j.verify().e3r1_policy else '')
         if self.j.verify().meta_research_autonomy:
             prompt+=META_RESEARCH_CONTROLLER_ADDENDUM
+            if self.j.verify().meta_collaboration:
+                from .meta_collaboration import CONTROLLER_ADDENDUM as META_COLLAB_ADDENDUM
+                prompt+=META_COLLAB_ADDENDUM
             payload={**payload,'meta_research_organization_context':meta_organization_context(self.j)}
         text=self.model.call('CTRL_'+ident,'CONTROLLER',None,prompt,payload)
         obj=strict_envelope(text)
@@ -1080,7 +1114,8 @@ class Engine:
             # scientifically material event occurs; continue valid Works meanwhile.
             # This checks durable journal event order, not process-local state.
             for row in reversed(rows):
-                if row['kind'] in {'ASSET_PUBLISHED','PROBLEM_CREATED','WORK_FINISHED','HISTORICAL_ASSET_INDEXED'}:
+                if row['kind'] in {'ASSET_PUBLISHED','PROBLEM_CREATED','WORK_FINISHED','HISTORICAL_ASSET_INDEXED',
+                                  'CHILD_RESEARCH_OBSERVED','COLLABORATION_ASSET_IMPORTED'}:
                     break
                 if row['kind']=='OPERATIONAL_PAUSE' and str(row['payload'].get('reason','')).startswith((
                         'CONTROLLER_PLAN_REJECTED:', 'CONTROLLER_INVALID_JSON')):
@@ -1094,7 +1129,9 @@ class Engine:
         if not s.controller_decisions:
             return not any(w['status'] in {'QUEUED','ACTIVE'} for w in s.work.values())
         last=max((i for i,r in enumerate(rows) if r['kind']=='CONTROLLER_DECISION'),default=-1)
-        if any(r['kind'] in {'ASSET_PUBLISHED','PROBLEM_CREATED','WORK_FINISHED','HISTORICAL_ASSET_INDEXED'}
+        if any(r['kind'] in {'ASSET_PUBLISHED','PROBLEM_CREATED','WORK_FINISHED',
+                             'HISTORICAL_ASSET_INDEXED','CHILD_RESEARCH_OBSERVED',
+                             'COLLABORATION_ASSET_IMPORTED'}
                for r in rows[last+1:]):
             return True
         if any(w['status'] in {'QUEUED','ACTIVE'} for w in s.work.values()):return False
