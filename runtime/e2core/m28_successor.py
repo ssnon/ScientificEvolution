@@ -21,6 +21,8 @@ from .meta_scheduler import M28_RECOVERY_MARKER
 PROTOCOL = 'M28_NATIVE_RESEARCH_SUCCESSOR_V1'
 FILE = 'M28_NATIVE_RESEARCH_SUCCESSOR.json'
 ORIGINAL_COMMIT = '9487b96'
+# Exact pin of the first successor (_03); no arbitrary ref or current HEAD.
+FIRST_SUCCESSOR_COMMIT = 'd931063'
 
 
 def _require(ok, code):
@@ -40,18 +42,29 @@ def _no_symlinks(tree):
         _require(p.is_file() or p.is_dir(), 'SOURCE_NONREGULAR_FILE:'+str(p))
 
 
-def _read_parent_cost(exp, state):
+def _read_parent_cost(exp, expected_call_ids):
+    # The inherited Journal may include upstream paid calls. Only model calls
+    # genuinely made IN THE CURRENT experiment have budget ledger entries.
+    # Compare exact IDs, not merely totals: missing/duplicate or stale rows
+    # must fail closed rather than silently undercount expenditure.
     db=exp/'.M232_DEV_BUDGET.sqlite3'
     _require(db.is_file() and not db.is_symlink(), 'ORIGINAL_BUDGET_DB_MISSING')
     with sqlite3.connect(db.as_uri()+'?mode=ro',uri=True) as conn:
-        rows=conn.execute('SELECT state,reserved_usd,actual_usd FROM calls').fetchall()
-    _require(len(rows)==len(state.model_calls), 'ORIGINAL_LEDGER_CALL_COUNT_MISMATCH')
-    _require(all(st=='SAVED' and actual is not None and float(actual)>=0
-                 for st,reserved,actual in rows), 'ORIGINAL_BUDGET_NOT_ALL_SETTLED')
-    return sum((Decimal(str(actual)) for _st,_res,actual in rows), Decimal('0'))
+        rows=conn.execute('SELECT call_id,state,reserved_usd,actual_usd FROM calls').fetchall()
+    ids=[x[0] for x in rows]
+    _require(len(ids)==len(set(ids)) and set(ids)==set(expected_call_ids),
+             'ORIGINAL_LEDGER_CALL_IDS_MISMATCH')
+    _require(all(st=='SAVED' and actual is not None and
+                 Decimal(str(actual)).is_finite() and Decimal(str(actual))>=0
+                 for _cid,st,_reserved,actual in rows),
+             'ORIGINAL_BUDGET_NOT_ALL_SETTLED')
+    return sum((Decimal(str(actual)) for _cid,_st,_res,actual in rows),
+               Decimal('0'))
 
 
-def _verify_origin_source_pin(repo, original_pin):
+def _verify_origin_source_pin(repo, original_pin, commit):
+    _require(commit in {ORIGINAL_COMMIT,FIRST_SUCCESSOR_COMMIT},
+             'UNSUPPORTED_PARENT_SOURCE_COMMIT')
     _require(original_pin.get('protocol')=='M16_NATIVE_EXECUTION_SOURCE_V1',
              'ORIGINAL_SOURCE_PIN_PROTOCOL')
     _require(original_pin.get('repository')==str(repo), 'ORIGINAL_REPOSITORY_MISMATCH')
@@ -61,7 +74,7 @@ def _verify_origin_source_pin(repo, original_pin):
         _require(isinstance(rel,str) and rel.startswith(('runtime/','AUTONOMOUS_SCIENTIFIC_EVOLUTION_20261029/'))
                  and '..' not in Path(rel).parts, 'ORIGINAL_SOURCE_PATH_INVALID')
         try:
-            raw=subprocess.check_output(['git','show',ORIGINAL_COMMIT+':'+rel],cwd=repo,
+            raw=subprocess.check_output(['git','show',commit+':'+rel],cwd=repo,
                                         stderr=subprocess.DEVNULL)
         except subprocess.CalledProcessError as e:
             raise EvidenceError('M28_SUCCESSOR:ORIGINAL_COMMIT_FILE_MISSING:'+rel) from e
@@ -113,6 +126,25 @@ def verify_successor_prefix(exp):
              'LINEAGE_BUDGET_DOES_NOT_CONSERVE_TOTAL')
     _require(meta['original_P0_sha256']==lineage['original_P0_sha256'],
              'LINEAGE_P0_DIGEST_CHANGED')
+    if lineage.get('parent_successor_lineage_sha256') is not None:
+        upstream=Path(lineage['upstream_experiment'])
+        upstream_lineage=_read_json(upstream/FILE)
+        _require(sha((upstream/FILE).read_bytes())==
+                 lineage['parent_successor_lineage_sha256'],
+                 'LINEAGE_UPSTREAM_LINK_CHANGED')
+        _require(upstream_lineage.get('protocol')==PROTOCOL and
+                 upstream_lineage['parent_native_source_commit']==ORIGINAL_COMMIT,
+                 'LINEAGE_UPSTREAM_CHAIN_UNSUPPORTED')
+        _require(abs(Decimal(str(lineage['original_total_budget_usd']))-
+                     Decimal(str(lineage['cumulative_upstream_accounted_usd']))-
+                     Decimal(str(lineage['successor_budget_limit_usd'])))<
+                 Decimal('0.00000003'), 'LINEAGE_ORIGINAL_TOTAL_BUDGET_NOT_CONSERVED')
+    else:
+        # The d931063 first successor remains valid with its old schema.
+        _require(abs(Decimal(str(lineage['original_budget_limit_usd']))-
+                     Decimal(str(lineage['accounted_upstream_usd']))-
+                     Decimal(str(lineage['successor_budget_limit_usd'])))<
+                 Decimal('0.00000002'), 'LINEAGE_FIRST_SUCCESSOR_BUDGET_NOT_CONSERVED')
     return {'status':'M28_NATIVE_SUCCESSOR_PREFIX_VERIFIED_NO_PAID',
             'parent_events':n, 'parent_head_sha256':lineage['parent_head_sha256'],
             'parent_calls_saved':lineage['parent_calls_saved'],
@@ -136,7 +168,18 @@ def build_successor(parent, dest, *, dry_run=False):
              'NESTED_EXPERIMENTS_FORBIDDEN')
     repo=Path(__file__).resolve().parents[2]
     _require(parent.parent==dest.parent, 'SUCCESSOR_REQUIRES_SAME_EXPERIMENT_PARENT_DIRECTORY')
-    _require(not (parent/FILE).exists(), 'FORK_OF_SUCCESSOR_NOT_AUTOMATICALLY_SUPPORTED')
+    # One verified successive continuation is supported: _02 -> _03 -> _04.
+    # The prior _03 experiment is never edited. Do not silently permit a later
+    # chain depth with an unrecognized runtime source pin.
+    previous_lineage = None
+    if (parent/FILE).exists():
+        verify_successor_prefix(parent)
+        previous_lineage = _read_json(parent/FILE)
+        _require(previous_lineage.get('parent_native_source_commit') == ORIGINAL_COMMIT and
+                 not previous_lineage.get('parent_successor_lineage_sha256'),
+                 'UNSUPPORTED_SUCCESSOR_CHAIN_DEPTH')
+    parent_commit = (FIRST_SUCCESSOR_COMMIT if previous_lineage is not None
+                     else ORIGINAL_COMMIT)
     _require(not (parent/'ROOTS').is_symlink() and not (parent/'ROOTS'/'PRIMARY').is_symlink(),
              'ORIGINAL_ROOT_SYMLINK')
     roots=[x.name for x in (parent/'ROOTS').iterdir() if x.is_dir()]
@@ -155,7 +198,8 @@ def build_successor(parent, dest, *, dry_run=False):
     _require(oldpersistent.get('activation_profile') is not None, 'ORIGINAL_PROFILE_MISSING')
     _require(oldpersistent.get('activation_profile_sha256')==
              profile_digest(oldpersistent['activation_profile']), 'ORIGINAL_PROFILE_DRIFT')
-    _require(_verify_origin_source_pin(repo,pin)>0, 'ORIGINAL_SOURCE_UNVERIFIED')
+    _require(_verify_origin_source_pin(repo,pin,parent_commit)>0,
+             'ORIGINAL_SOURCE_UNVERIFIED')
     j=EvolutionJournal(oldroot)
     state=j.verify()
     events=j._events()
@@ -177,7 +221,22 @@ def build_successor(parent, dest, *, dry_run=False):
              'ORIGINAL_P0_DRIFT')
     oldbudget=_read_json(parent/'M232_DEV_BUDGET.json')
     old_cap=Decimal(str(oldbudget['limit_usd']))
-    spent=_read_parent_cost(parent,state)
+    if previous_lineage is None:
+        expected_paid_ids = set(state.model_calls)
+        cumulative_previous_cost = Decimal('0')
+        initial_total_budget = old_cap
+    else:
+        inherited_n = previous_lineage['parent_events']
+        expected_paid_ids = {e['payload']['id'] for e in events[inherited_n+1:]
+                             if e['kind']=='MODEL_CALL_INTENT'}
+        _require(len(expected_paid_ids)==len(state.model_calls)-
+                 previous_lineage['parent_calls_saved'],
+                 'INHERITED_MODEL_CALL_COUNT_MISMATCH')
+        cumulative_previous_cost = Decimal(str(previous_lineage['accounted_upstream_usd']))
+        initial_total_budget = Decimal(str(previous_lineage['original_budget_limit_usd']))
+        _require(abs(initial_total_budget-cumulative_previous_cost-old_cap) <
+                 Decimal('0.00000002'), 'PARENT_BUDGET_CHAIN_BROKEN')
+    spent=_read_parent_cost(parent,expected_paid_ids)
     _require(old_cap>spent>=0,'ORIGINAL_BUDGET_EXHAUSTED_OR_INVALID')
     new_cap=(old_cap-spent).quantize(Decimal('0.00000001'),rounding=ROUND_DOWN)
     _require(new_cap>0,'NO_REMAINING_BUDGET')
@@ -194,7 +253,11 @@ def build_successor(parent, dest, *, dry_run=False):
         'parent_journal_manifest_sha256':sha((oldroot/'manifest.json').read_bytes()),
         'parent_blob_names':sorted(x.name for x in (oldroot/'blobs').iterdir()),
         'parent_native_source_pin_sha256':sha(pinpath.read_bytes()),
-        'parent_native_source_commit':ORIGINAL_COMMIT,
+        'parent_native_source_commit':parent_commit,
+        'parent_successor_lineage_sha256':(
+            sha((parent/FILE).read_bytes()) if previous_lineage is not None else None),
+        'original_total_budget_usd':float(initial_total_budget),
+        'cumulative_upstream_accounted_usd':float(cumulative_previous_cost+spent),
         'parent_calls_saved':len(state.model_calls),
         'parent_decisions':len(state.controller_decisions),
         'parent_assets':len(state.assets),

@@ -583,6 +583,45 @@ def controller_plan(j:EvolutionJournal, raw_obj:dict, call_id:str,decision_id:st
     guard(isinstance(selections,list),'META_A2_COLLAB_REQUESTS_NOT_ARRAY')
     guard(s.meta_collaboration or not selections,'META_A2_COLLAB_NOT_ACTIVATED')
     review=raw_obj.get('program_portfolio_review')
+    # M28 v2: in a zero-child PRIMARY, the Controller's top-level rationale
+    # ALREADY IS a model-authored program-wide judgment. Do not throw away a
+    # scientifically valid terminal plan merely because its second, redundant
+    # JSON representation was omitted. This is a typed, auditable projection
+    # of the exact model-authored rationale and remaining questions, NOT a new
+    # model decision and NOT a fabricated scientific conclusion. Never infer
+    # that a child was considered. Any existing/requested child requires the
+    # model to author program_portfolio_review explicitly, as before.
+    if (review is None and s.meta_collaboration and j.root.name=='PRIMARY' and
+            raw_obj['disposition'] in {'HOLD_WITH_RATIONALE',
+                    'SCOPED_NEGATIVE','REVIEW_WORTHY_CANDIDATE'} and
+            not s.organization_requests and not s.organization_materialized and
+            not s.child_research_reports and not org_requests and not selections):
+        authored_assessment = raw_obj.get('objective_assessment')
+        remaining = (authored_assessment.get('remaining_questions')
+                     if isinstance(authored_assessment,dict) else None)
+        guard(isinstance(remaining,list) and
+              all(isinstance(x,str) for x in remaining),
+              'M28_TERMINAL_PROJECTION_NEEDS_AUTHORED_REMAINING_QUESTIONS')
+        review = {
+            'disposition': {
+                'HOLD_WITH_RATIONALE':'PAUSE_WITH_RATIONALE',
+                'SCOPED_NEGATIVE':'SCOPED_NEGATIVE',
+                'REVIEW_WORTHY_CANDIDATE':'REVIEW_WORTHY_CANDIDATE',
+            }[raw_obj['disposition']],
+            'rationale':raw_obj['rationale'],
+            'considered_organization_request_ids':[],
+            'considered_report_ids':[],
+            'unresolved_frontiers':list(remaining),
+        }
+        planned.append(('OPERATIONAL_PAUSE',{
+            'reason':'M28_TERMINAL_PROGRAM_REVIEW_STRUCTURED_FROM_AUTHORED_JUDGMENT',
+            'call_id':call_id,
+            'decision_id':decision_id,
+            'original_program_review_absent':True,
+            'source_fields':['rationale','disposition',
+                             'objective_assessment.remaining_questions'],
+            'science_certification':False,
+        }))
     if s.meta_collaboration and j.root.name=='PRIMARY':
         from .meta_scheduler import reassessment_pending
         guard(not reassessment_pending(j) or review is not None,
