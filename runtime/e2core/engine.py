@@ -505,6 +505,13 @@ def controller_plan(j:EvolutionJournal, raw_obj:dict, call_id:str,decision_id:st
             q['continuity_contract_version']=CONTINUITY_VERSION
             prepared_problems.append(q)
         else:prepared_problems.append(p)
+    # Validate every authored typed frontier, even if the optional
+    # aggregate assessment was omitted. Unknown science is never invented.
+    if s.meta_collaboration:
+        from .m29_frontier import validate_spec
+        for proposed in prepared_problems:
+            if isinstance(proposed,dict) and 'research_frontier' in proposed:
+                validate_spec(proposed['research_frontier'],s)
     planned=[]
     for p in _ordered_new_problems(s.problems.keys(),prepared_problems):
         planned.append(('PROBLEM_CREATED',p))
@@ -566,6 +573,15 @@ def controller_plan(j:EvolutionJournal, raw_obj:dict, call_id:str,decision_id:st
     review={'reviewer_id':decision_id,'scientific_status':raw_obj['disposition'],'rationale':raw_obj['rationale'],
         'considered_asset_ids':[p['id'] for p in raw_obj.get('reviews',[])],
         'unresolved_opportunities':raw_obj.get('unresolved_opportunities',[])}
+    # M29: the scientist may preserve a discriminating, NOT-YET-EXECUTABLE
+    # sub-hypothesis as a real Problem even when its disposition is HOLD.
+    # This is model-authored science, not an automatic Work assignment.
+    if s.meta_collaboration:
+        from .m29_frontier import validate_model_frontier_assessment
+        m29_assessment=validate_model_frontier_assessment(
+            raw_obj.get('research_frontier_assessment'),s,prepared_problems)
+        if m29_assessment is not None:
+            review['m29_research_frontier_assessment']=m29_assessment
     if m23_translations:
         review['m23_verified_reference_translation']=m23_translations
     planned.append(('PROGRAM_REVIEWED',review))
@@ -740,6 +756,10 @@ def _external_context(j, tool_capabilities=None):
         'available_primary_sources':primary_source_descriptions,
         'research_capability_state':research_capability_state(j, tool_capabilities),
         'works':work_summaries,
+        'm29_existing_research_frontiers':[
+            {'problem_id':pid,'question':p.get('question'),
+             'research_frontier':p['research_frontier']}
+            for pid,p in s.problems.items() if 'research_frontier' in p],
         'portfolio_context':_portfolio_context(s) if s.e3r1_policy else None,
         'm25_observed_work_outcomes':observed_work_outcomes(j),
         'prior_program_reviews':s.program_reviews[-5:],
@@ -939,6 +959,8 @@ class Engine:
             if self.j.verify().meta_collaboration:
                 from .meta_collaboration import CONTROLLER_ADDENDUM as META_COLLAB_ADDENDUM
                 prompt+=META_COLLAB_ADDENDUM
+                from .m29_frontier import CONTROLLER_ADDENDUM as M29_FRONTIER_ADDENDUM
+                prompt+=M29_FRONTIER_ADDENDUM
             payload={**payload,'meta_research_organization_context':meta_organization_context(self.j)}
         text=self.model.call('CTRL_'+ident,'CONTROLLER',None,prompt,payload)
         obj=strict_envelope(text)
