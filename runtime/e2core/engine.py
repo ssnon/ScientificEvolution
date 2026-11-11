@@ -577,9 +577,12 @@ def controller_plan(j:EvolutionJournal, raw_obj:dict, call_id:str,decision_id:st
     # sub-hypothesis as a real Problem even when its disposition is HOLD.
     # This is model-authored science, not an automatic Work assignment.
     if s.meta_collaboration:
-        from .m29_frontier import validate_model_frontier_assessment
-        m29_assessment=validate_model_frontier_assessment(
-            raw_obj.get('research_frontier_assessment'),s,prepared_problems)
+        # M29.1 requires an explicit classification on HOLD only in its
+        # source-pinned successor. Do not force a new scientific Problem.
+        from .m291_frontier_contract import validate_for_controller
+        m29_assessment=validate_for_controller(
+            j,raw_obj.get('research_frontier_assessment'),prepared_problems,
+            disposition=raw_obj['disposition'],state=s)
         if m29_assessment is not None:
             review['m29_research_frontier_assessment']=m29_assessment
     if m23_translations:
@@ -961,6 +964,11 @@ class Engine:
                 prompt+=META_COLLAB_ADDENDUM
                 from .m29_frontier import CONTROLLER_ADDENDUM as M29_FRONTIER_ADDENDUM
                 prompt+=M29_FRONTIER_ADDENDUM
+                from .m291_frontier_contract import active as m291_active, CONTROLLER_PRELUDE as M291_PRELUDE
+                if m291_active(self.j):
+                    # The explicit contract is visible both before and after
+                    # the legacy JSON template. The scientific choice is free.
+                    prompt=M291_PRELUDE+'\n'+prompt+'\n'+M291_PRELUDE
             payload={**payload,'meta_research_organization_context':meta_organization_context(self.j)}
         text=self.model.call('CTRL_'+ident,'CONTROLLER',None,prompt,payload)
         obj=strict_envelope(text)

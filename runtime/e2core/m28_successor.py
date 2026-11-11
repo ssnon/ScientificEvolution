@@ -126,6 +126,15 @@ def verify_successor_prefix(exp):
              'LINEAGE_BUDGET_DOES_NOT_CONSERVE_TOTAL')
     _require(meta['original_P0_sha256']==lineage['original_P0_sha256'],
              'LINEAGE_P0_DIGEST_CHANGED')
+    if lineage.get('m291_explicit_frontier_contract') is True:
+        from .m291_frontier_contract import MARKER as FRONTIER_MARKER
+        _require(len(rows)>n+1 and rows[n+1]['kind']=='OPERATIONAL_PAUSE' and
+                 rows[n+1]['payload'].get('reason')==FRONTIER_MARKER and
+                 rows[n+1]['payload'].get('parent_head_sha256')==lineage['parent_head_sha256'] and
+                 rows[n+1]['payload'].get('source_pin_sha256')==sha(
+                     (exp/'NATIVE_RUNTIME_SOURCE_PIN.json').read_bytes()) and
+                 rows[n+1]['payload'].get('science_certification') is False,
+                 'LINEAGE_M291_FRONTIER_CONTRACT_MISSING_OR_TAMPERED')
     # Re-verify the A/B baseline's immutable journal head and billed calls.
     # It is accounted for in the original experiment budget, but never copied
     # into the counterfactual science input or presented to the Controller.
@@ -135,6 +144,10 @@ def verify_successor_prefix(exp):
         parent=Path(lineage['upstream_experiment']).resolve()
         _require(cmp_exp.parent==parent.parent and cmp_exp!=parent,
                  'LINEAGE_COMPARATOR_LOCATION_DRIFT')
+        # A nested comparator must itself verify its immutable lineage,
+        # including the earlier sibling's actual settled ledger and source pin.
+        _require(cmp_exp!=exp,'LINEAGE_COMPARATOR_SELF_REFERENCE')
+        verify_successor_prefix(cmp_exp)
         cmp_lineage=_read_json(cmp_exp/FILE)
         _require(cmp_lineage['upstream_experiment']==str(parent) and
                  cmp_lineage['parent_head_sha256']==baseline['parent_head_sha256'] and
@@ -153,10 +166,21 @@ def verify_successor_prefix(exp):
                  len(ids)==len(cs.model_calls)-cmp_lineage['parent_calls_saved'],
                  'LINEAGE_COMPARATOR_CALLS_DRIFT')
         actual=_read_parent_cost(cmp_exp,ids)
-        _require(abs(actual-Decimal(str(baseline['actual_usd'])))<
+        nested=Decimal(str(baseline.get('nested_comparator_actual_usd',0)))
+        _require(nested>=0, 'LINEAGE_NEGATIVE_NESTED_COMPARATOR_COST')
+        if nested:
+            previous_cmp=cmp_lineage.get('comparison_baseline')
+            _require(previous_cmp is not None and
+                     previous_cmp['parent_head_sha256']==lineage['parent_head_sha256'] and
+                     abs(Decimal(str(previous_cmp['actual_usd']))-nested)<Decimal('0.00000001'),
+                     'LINEAGE_NESTED_COMPARATOR_DRIFT')
+        combined=actual+nested
+        _require(abs(actual-Decimal(str(baseline.get('direct_actual_usd',actual))))<
+                 Decimal('0.00000001') and
+                 abs(combined-Decimal(str(baseline['actual_usd'])))<
                  Decimal('0.00000001') and
                  abs(Decimal(str(lineage['accounted_upstream_usd']))-
-                     Decimal(str(lineage['direct_parent_spent_usd']))-actual)<
+                     Decimal(str(lineage['direct_parent_spent_usd']))-combined)<
                  Decimal('0.00000002'),
                  'LINEAGE_COMPARATOR_BUDGET_DRIFT')
     if lineage.get('parent_successor_lineage_sha256') is not None:
@@ -187,7 +211,8 @@ def verify_successor_prefix(exp):
             'original_preserved':True}
 
 
-def build_successor(parent, dest, *, dry_run=False, comparison_baseline=None):
+def build_successor(parent, dest, *, dry_run=False, comparison_baseline=None,
+                    m291_explicit_frontier_contract=False):
     """Create a new, source-pinned continuation from a quiescent M28 ROOT.
 
     Execution must be separately authorized. This function makes NO model calls,
@@ -300,12 +325,30 @@ def build_successor(parent, dest, *, dry_run=False, comparison_baseline=None):
                  comparison_lineage['parent_calls_saved'],
                  'COMPARATOR_INHERITED_CALLS_MISMATCH')
         comparator_cost=_read_parent_cost(comparison_baseline,compare_ids)
+        direct_comparator_cost=comparator_cost
+        # In an M29.1 sibling A/B, the _05 comparator already accounts for
+        # an earlier _04 sibling. Their independent actual expenses both
+        # belong to the original total budget, but neither is science input.
+        nested_comparator_cost=Decimal('0')
+        older=comparison_lineage.get('comparison_baseline')
+        if older is not None:
+            _require(older['parent_head_sha256']==sha(canon(events[-1])) and
+                     older['experiment']!=str(comparison_baseline) and
+                     older['experiment']!=str(parent),
+                     'NESTED_COMPARATOR_NOT_SAME_INPUT')
+            nested_comparator_cost=Decimal(str(older['actual_usd']))
+            _require(nested_comparator_cost>=0, 'NEGATIVE_NESTED_COMPARATOR_COST')
+            # verify_successor_prefix(comparison_baseline) above already
+            # verified the original _04 Journal, its ledger and its lineage.
+        comparator_cost += nested_comparator_cost
         comparator_record={
             'experiment':str(comparison_baseline),
             'terminal_head_sha256':sha(canon(compare_rows[-1])),
             'parent_head_sha256':sha(canon(events[-1])),
             'new_call_ids':sorted(compare_ids),
             'actual_usd':float(comparator_cost),
+            'direct_actual_usd':float(direct_comparator_cost),
+            'nested_comparator_actual_usd':float(nested_comparator_cost),
             'disposition':'HOLD_WITH_RATIONALE',
             'not_independent_scientific_certification':True,
         }
@@ -320,6 +363,7 @@ def build_successor(parent, dest, *, dry_run=False, comparison_baseline=None):
     lineage={
         'protocol':PROTOCOL,
         'kind':'EXACT_EXISTING_JOURNAL_PREFIX_NEW_RUNTIME_NOT_FRESH',
+        'm291_explicit_frontier_contract':bool(m291_explicit_frontier_contract),
         'upstream_experiment':str(parent),
         'upstream_primary_root':str(oldroot),
         'parent_events':len(events),
@@ -395,6 +439,14 @@ def build_successor(parent, dest, *, dry_run=False, comparison_baseline=None):
             'parent_events':lineage['parent_events'],
             'scientific_certification':False,
         })
+        if m291_explicit_frontier_contract:
+            from .m291_frontier_contract import MARKER as FRONTIER_MARKER
+            successor.append('OPERATIONAL_PAUSE',{
+                'reason':FRONTIER_MARKER,
+                'parent_head_sha256':lineage['parent_head_sha256'],
+                'source_pin_sha256':sha((dest/'NATIVE_RUNTIME_SOURCE_PIN.json').read_bytes()),
+                'science_certification':False,
+            })
         successor.verify()
         status=verify_successor_prefix(dest)
         from .meta_scheduler import controller_recovery_pending
