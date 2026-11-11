@@ -365,6 +365,10 @@ def controller_v3(self,ident):
     from e2core import math_claim_selection as _native_claim_selection
     if _native_claim_selection.controller_context(j) is not None:
         prompt += '\n'+_native_claim_selection.CONTROLLER_ADDENDUM
+    # M29.2: V3 is the actual Controller for M28 A3 (V4 + V3). Apply the
+    # very same opt-in contract as the Native Engine BEFORE the ON_DEMAND
+    # presentation/assessor call. No science is auto-authored by the adapter.
+    prompt,full=e2_engine.effective_controller_contract(j,prompt,full)
     raw,m232_final_controller_call_id,_=assessor_call(self.model,j,'CTRL_'+ident,
         prompt,full,'CONTROLLER',mode=m232_detail_mode)
     control=strict_envelope(raw)

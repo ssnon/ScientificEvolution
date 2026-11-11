@@ -903,6 +903,37 @@ def _worker_input(j,wid,tool_capabilities=None):
     result['m23_asset_publication_source_contract']=_m23_worker_publication_source_contract(s,w)
     return result
 
+def effective_controller_contract(j, base_prompt, base_context):
+    """Single opt-in M28/M29/M29.1 science contract for Native and V3/V4.
+
+    Both entrypoints already share controller_plan() and EvolutionJournal, but
+    used to assemble different prompt/context. Never infer a scientific
+    conclusion, force organization creation, or mutate a Journal here.
+    Preserve legacy non-opt-in prompt/context byte-for-byte.
+    """
+    s=j.verify()
+    if not s.meta_research_autonomy:
+        return base_prompt,base_context
+    guard(isinstance(base_prompt,str) and isinstance(base_context,dict),
+          'META_CONTROLLER_CONTRACT_INPUT_INVALID')
+    prompt=base_prompt+META_RESEARCH_CONTROLLER_ADDENDUM
+    if s.meta_collaboration:
+        from .meta_collaboration import CONTROLLER_ADDENDUM as META_COLLAB_ADDENDUM
+        from .m29_frontier import CONTROLLER_ADDENDUM as M29_FRONTIER_ADDENDUM
+        from .m291_frontier_contract import active as m291_active, CONTROLLER_PRELUDE as M291_PRELUDE
+        prompt+=META_COLLAB_ADDENDUM+M29_FRONTIER_ADDENDUM
+        if m291_active(j):
+            # This is model-visible ONLY in the explicitly pinned successor.
+            # The model remains free to choose scientific HOLD with no new Work.
+            prompt=M291_PRELUDE+'\n'+prompt+'\n'+M291_PRELUDE
+    # Real, independently recorded child reports remain fallible prior AI.
+    # This field must be available even in the ON_DEMAND/COMPACT/SEPARATE view.
+    guard('meta_research_organization_context' not in base_context,
+          'META_CONTROLLER_CONTEXT_ALREADY_APPLIED')
+    return prompt,{**base_context,
+                   'meta_research_organization_context':meta_organization_context(j)}
+
+
 class Engine:
     def __init__(self,j,model,*,tool_backend=None,serial_fair=False,science_cpu_seconds=18,science_wall_seconds=22):
         self.j=j;self.model=model;self.tool_backend=tool_backend or self._tool
@@ -957,19 +988,7 @@ class Engine:
     def controller(self,ident):
         payload=_external_context(self.j, 'NATIVE_RESEARCH_TOOLS' if self._native_tool_contract else 'CUSTOM_BACKEND_CAPABILITIES_UNDECLARED')
         prompt=CONTROLLER_PROMPT+(E3R1_CONTROLLER_ADDENDUM if self.j.verify().e3r1_policy else '')
-        if self.j.verify().meta_research_autonomy:
-            prompt+=META_RESEARCH_CONTROLLER_ADDENDUM
-            if self.j.verify().meta_collaboration:
-                from .meta_collaboration import CONTROLLER_ADDENDUM as META_COLLAB_ADDENDUM
-                prompt+=META_COLLAB_ADDENDUM
-                from .m29_frontier import CONTROLLER_ADDENDUM as M29_FRONTIER_ADDENDUM
-                prompt+=M29_FRONTIER_ADDENDUM
-                from .m291_frontier_contract import active as m291_active, CONTROLLER_PRELUDE as M291_PRELUDE
-                if m291_active(self.j):
-                    # The explicit contract is visible both before and after
-                    # the legacy JSON template. The scientific choice is free.
-                    prompt=M291_PRELUDE+'\n'+prompt+'\n'+M291_PRELUDE
-            payload={**payload,'meta_research_organization_context':meta_organization_context(self.j)}
+        prompt,payload=effective_controller_contract(self.j,prompt,payload)
         text=self.model.call('CTRL_'+ident,'CONTROLLER',None,prompt,payload)
         obj=strict_envelope(text)
         if obj is None:
