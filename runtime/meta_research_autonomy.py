@@ -81,8 +81,10 @@ def init(args):
         j.append('META_RESEARCH_COLLABORATION_ACTIVATED', {'policy': COLLAB_POLICY})
         _save_new(exp / 'M232_DEV_BUDGET.json', budget_payload)
         budget_sha = sha((exp / 'M232_DEV_BUDGET.json').read_bytes())
+        from e2core.m291_frontier_contract import GENERAL_FLAG as FRONTIER_FLAG
         _save_new(exp / 'persistent.json', {'protocol': PROTOCOL,
                   'science_certification': False, 'meta_autonomy_enabled': True,
+                  FRONTIER_FLAG: True,
                   'activation_profile': profile,
                   'activation_profile_sha256': activation_digest(profile),
                   'budget_config_sha256': budget_sha})
@@ -91,12 +93,17 @@ def init(args):
                   'initial_root': str(root), 'science_certification': False,
                   'researcher_count_not_preselected': True,
                   'mandatory_generations': False, 'mandatory_synthesis': False,
+                  FRONTIER_FLAG: True,
                   'activation_profile_sha256': activation_digest(profile),
                   'budget_config_sha256': budget_sha})
         # Verify the effective M25 activation/budget contract before pinning.
         check_m28_experiment(exp, model=profile['model'])
         from generational_run import pin_native_source
         pin = pin_native_source(exp)
+        # The marker is recorded AFTER the native source pin exists. It is an
+        # operational provenance event, NOT an automatic scientific assertion.
+        from e2core.m291_frontier_contract import register_general_root
+        register_general_root(j)
         guard(j.verify().meta_research_autonomy, 'META_ORG_ACTIVATION_FAILED')
         print(json.dumps({'status': 'META_ORG_INITIALIZED_NO_PAID', 'root': str(root),
                           'source_pinned_files': len(pin['files'])}, ensure_ascii=False))
@@ -121,6 +128,14 @@ def _preflight(exp, meta):
     guard(primary.meta_research_autonomy, 'META_ORG_PRIMARY_NOT_ACTIVATED')
     guard(sha(primary.program['problem'].encode('utf8')) == meta['original_P0_sha256'],
           'META_ORG_P0_CHANGED')
+    # New M29.3 roots must never silently lose the explicit-HOLD contract.
+    # Historical roots remain readable under their original Source Pin.
+    from e2core.m291_frontier_contract import GENERAL_FLAG, active as frontier_active
+    persistent = json.loads((exp / 'persistent.json').read_text(encoding='utf8'))
+    required = persistent.get(GENERAL_FLAG) is True or meta.get(GENERAL_FLAG) is True
+    guard(not required or (persistent.get(GENERAL_FLAG) is True and
+                          meta.get(GENERAL_FLAG) is True),
+          'M293_PREFLIGHT_FRONTIER_FLAG_DRIFT')
     observations = {}
     for subroot in _roots(exp):
         j = EvolutionJournal(subroot)
@@ -131,6 +146,8 @@ def _preflight(exp, meta):
         # Historical inspection is allowed; current-source execution is not.
         if not legacy:
             verify_runtime_source(m, subroot)
+        if required:
+            guard(frontier_active(j), 'M293_PREFLIGHT_FRONTIER_CONTRACT_NOT_ACTIVE')
         observations[subroot.name] = {'decisions': len(s.controller_decisions),
                                       'works': len(s.work),
                                       'requests': len(s.organization_requests),
