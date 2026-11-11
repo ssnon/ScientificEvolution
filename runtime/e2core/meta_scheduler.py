@@ -80,6 +80,59 @@ def request_evidence_reassessment(j):
     return payload
 
 
+# An operational recovery marker is created ONLY in an independently
+# source-pinned successor experiment, never in the original scientific Journal.
+M28_RECOVERY_MARKER = 'M28_VERIFIED_SUCCESSOR_TERMINAL_REVIEW_RETRY_OPENED'
+
+
+def controller_recovery_pending(j):
+    """Allow a model-authored terminal rejudgment, not a new science claim.
+
+    No model output is rewritten or accepted by this predicate. Only successor
+    runs with a verified, explicit upstream lineage receive one new recovery
+    window. Once a Controller decision commits, the window is consumed.
+    """
+    root = j.root
+    if root.name != 'PRIMARY' or root.parent.name != 'ROOTS':
+        return False
+    exp = root.parent.parent
+    p = exp / 'M28_NATIVE_RESEARCH_SUCCESSOR.json'
+    if not p.is_file() or p.is_symlink():
+        return False
+    meta = json.loads((exp / 'meta_research.json').read_text(encoding='utf8'))
+    persistent = json.loads((exp / 'persistent.json').read_text(encoding='utf8'))
+    if (meta.get('native_successor_sha256') != sha(p.read_bytes()) or
+            persistent.get('native_successor_sha256') != sha(p.read_bytes())):
+        return False
+    lineage = json.loads(p.read_text(encoding='utf8'))
+    rows = j._events()
+    prefix_n = lineage.get('parent_events')
+    if type(prefix_n) is not int or prefix_n < 1 or len(rows) <= prefix_n:
+        return False
+    handoff = rows[prefix_n]
+    if (handoff['kind'] != 'OPERATIONAL_PAUSE' or
+            handoff['payload'].get('reason') != M28_RECOVERY_MARKER or
+            handoff['payload'].get('parent_head_sha256') != lineage.get('parent_head_sha256') or
+            sha(canon(rows[prefix_n-1])) != lineage.get('parent_head_sha256')):
+        return False
+    if any(e['kind'] == 'CONTROLLER_DECISION' for e in rows[prefix_n+1:]):
+        return False
+    s = j.verify()
+    if (not s.meta_collaboration or not s.program_reviews or
+            s.program_reviews[-1]['scientific_status'] != 'ONGOING' or
+            not s.controller_decisions or
+            any(w['status'] in {'ACTIVE', 'QUEUED'} for w in s.work.values()) or
+            any(v['state'] != 'SAVED' for v in s.model_calls.values())):
+        return False
+    last = max(i for i,e in enumerate(rows) if e['kind'] == 'CONTROLLER_DECISION')
+    return any(e['kind'] == 'OPERATIONAL_PAUSE' and
+               str(e['payload'].get('reason','')).startswith(
+                   ('CONTROLLER_PLAN_REJECTED:', 'CONTROLLER_INVALID_JSON')) and
+               e['payload'].get('call_id') in s.model_calls and
+               s.model_calls[e['payload']['call_id']]['state'] == 'SAVED'
+               for e in rows[last+1:])
+
+
 def root_ready(root):
     guard(not Path(root).is_symlink(), 'META_A3_SYMLINK_RESEARCH_ROOT')
     j = EvolutionJournal(root); s = j.verify()
@@ -96,7 +149,9 @@ def root_ready(root):
         return True
     events = j._events()
     last = max((i for i,e in enumerate(events) if e['kind'] == 'CONTROLLER_DECISION'), default=-1)
-    return any(e['kind'] in MATERIAL_EVENTS for e in events[last+1:])
+    if any(e['kind'] in MATERIAL_EVENTS for e in events[last+1:]):
+        return True
+    return controller_recovery_pending(j)
 
 
 def _initial_state():

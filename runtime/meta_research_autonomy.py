@@ -112,6 +112,9 @@ def _preflight(exp, meta):
     from generational_run import modules, verify_runtime_source
     activation = check_m28_experiment(exp, allow_unprofiled=True)
     legacy = activation['status'] == 'M28_LEGACY_UNPROFILED_READONLY_NO_PAID'
+    if (exp / 'M28_NATIVE_RESEARCH_SUCCESSOR.json').exists():
+        from e2core.m28_successor import verify_successor_prefix
+        verify_successor_prefix(exp)
     m = modules()
     root = exp / 'ROOTS' / 'PRIMARY'
     primary = EvolutionJournal(root).verify()

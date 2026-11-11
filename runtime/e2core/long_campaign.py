@@ -213,6 +213,12 @@ def _recent_controller_schema_failures(j):
     e3r1=j.verify().e3r1_policy
     for evt in reversed(j._events()):
         if evt['kind'] in {'CONTROLLER_DECISION','RUNTIME_CONTRACT_UPGRADED'}:break
+        # Clear *operational* schema failures only at a provenance-verified
+        # runtime successor boundary. The rejected LLM responses remain saved.
+        if (evt['kind'] == 'OPERATIONAL_PAUSE' and
+                evt['payload'].get('reason') ==
+                'M28_VERIFIED_SUCCESSOR_TERMINAL_REVIEW_RETRY_OPENED'):
+            break
         if e3r1 and evt['kind'] in {'ASSET_PUBLISHED','PROBLEM_CREATED','WORK_FINISHED',
                                     'HISTORICAL_ASSET_INDEXED'}:break
         if evt['kind']!='OPERATIONAL_PAUSE':continue

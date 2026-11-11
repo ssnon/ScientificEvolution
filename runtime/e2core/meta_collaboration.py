@@ -42,7 +42,9 @@ no report is proof of P0 impossibility, and operational resource exhaustion
 is not a scientific disposition. For program-wide stop, account for ALL known
 children, including ones with no report and still active opportunities. The
 machine checks accounting/provenance but cannot certify scientific merit.
-This field is optional; do not produce program-level dispositions as a quota.
+This field is optional ONLY for disposition ONGOING (where it may be omitted or have disposition CONTINUE).
+For PRIMARY, it is REQUIRED whenever top-level disposition is HOLD_WITH_RATIONALE, SCOPED_NEGATIVE, or REVIEW_WORTHY_CANDIDATE. The field is named program_portfolio_review (not a scientific asset) and its disposition MUST map to the top-level disposition: HOLD_WITH_RATIONALE -> PAUSE_WITH_RATIONALE, SCOPED_NEGATIVE -> SCOPED_NEGATIVE, REVIEW_WORTHY_CANDIDATE -> REVIEW_WORTHY_CANDIDATE. It MUST include rationale, considered_organization_request_ids, considered_report_ids, unresolved_frontiers. If no child research was requested or materialized, BOTH considered_organization_request_ids and considered_report_ids MUST be [] and must NOT be invented. Reaching a terminal decision is OPTIONAL; submitting a complete review is mandatory IF a terminal decision is chosen.
+M28 scoped candidate semantics: a falsifiable pre-experiment candidate may have objective_status REVIEW_WORTHY_CANDIDATE, objective_coverage SUBPROBLEM_ONLY, research_status PAUSED_EVIDENCE or PAUSED_LOW_INFORMATION, and valid pre-existing supporting_asset_ids. This is a RESEARCH CANDIDATE, NOT P0 completion. COMPLETED is reserved for objective_coverage ORIGINAL_PROBLEM with concrete prior supporting assets. Use HOLD_WITH_RATIONALE/UNRESOLVED when evidence does not justify a candidate; never change a scientific conclusion only to fit a schema. Do not produce program-wide dispositions as a quota.
 A pause is not a proof of P0 impossibility or an experiment-certified result.
 '''
 

@@ -473,7 +473,18 @@ def controller_plan(j:EvolutionJournal, raw_obj:dict, call_id:str,decision_id:st
         elif raw_obj['disposition'] in {'HOLD_WITH_RATIONALE','UNRESOLVED'}:
             guard(assessment.get('objective_status')=='UNRESOLVED' and assessment.get('research_status') in {'PAUSED_EVIDENCE','PAUSED_LOW_INFORMATION'},'R5_PAUSE_IS_NOT_SCIENTIFIC_COMPLETION')
         elif raw_obj['disposition']=='REVIEW_WORTHY_CANDIDATE':
-            guard(assessment.get('objective_status') in {'REVIEW_WORTHY_CANDIDATE','SOLVED'} and assessment.get('research_status')=='COMPLETED','R5_CANDIDATE_DISPOSITION_MISMATCH')
+            # M28 distinguishes a scoped, review-worthy pre-experiment candidate
+            # from P0-level completion. Legacy R5 semantics remain unchanged.
+            scoped_m28 = (s.meta_collaboration and
+                assessment.get('objective_status')=='REVIEW_WORTHY_CANDIDATE' and
+                assessment.get('objective_coverage')=='SUBPROBLEM_ONLY' and
+                assessment.get('research_status') in {'PAUSED_EVIDENCE','PAUSED_LOW_INFORMATION'} and
+                isinstance(assessment.get('supporting_asset_ids'), list) and
+                bool(assessment.get('supporting_asset_ids')))
+            completed_p0 = (assessment.get('objective_status') in
+                {'REVIEW_WORTHY_CANDIDATE','SOLVED'} and
+                assessment.get('research_status')=='COMPLETED')
+            guard(scoped_m28 or completed_p0,'R5_CANDIDATE_DISPOSITION_MISMATCH')
         elif raw_obj['disposition']=='SCOPED_NEGATIVE':
             guard(assessment.get('objective_status')=='PROVEN_NEGATIVE_IN_SCOPE' and assessment.get('research_status')=='COMPLETED','R5_SCOPED_NEGATIVE_DISPOSITION_MISMATCH')
         if raw_obj['disposition']!='ONGOING':
@@ -1202,7 +1213,10 @@ class Engine:
         # If no pending Work and the last Controller chose ongoing (e.g. created
         # an empty task set despite earlier workers finishing), permit it to
         # reassess, but the enclosing run loop stops without useful action.
-        return False
+        # A verified runtime-successor may reconsider an uncommitted terminal
+        # plan without pretending a rejected plan was new scientific evidence.
+        from .meta_scheduler import controller_recovery_pending
+        return controller_recovery_pending(self.j)
     def run(self,max_iterations=6,max_parallel=3):
         """Iteration/call quotas are external pauses, never scientific termination."""
         state=self.j.verify()
