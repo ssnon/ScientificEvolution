@@ -1,7 +1,13 @@
 # ScientificEvolution — autonomous AI Scientist development
 
+<!-- M293_M295_README_CURRENT_20261112 -->
+**Current development checkpoint (2026-11-12):** source branch `dev/meta-research-autonomy-v1`, implementation commit `56aeba8`. M29.3 completed an actual autonomous DAC/NO3RR research run (323 SAVED calls, 49 Controller decisions, P0 unresolved and a P14 joint calculation left unattempted). M29.4 verified the **scripted** child-ROOT materialization path; M29.5 obtained six real LLM blind-case judgments and repaired its prior-art/decision contract. Final no-paid regression: 399 tests run, zero failures and one skip; the unchanged saved Native response passed **read-only, in-memory** planner validation. These do **not** demonstrate a complete scientist-chosen decision → executed Work/tool/independent ROOT → evidence → later Controller-revision chain, and do not certify scientific novelty.
+
+[DEVELOPMENT_STATE.md](DEVELOPMENT_STATE.md) is the **current source of status**, and [RESEARCH_EVOLUTION_LOG.md](RESEARCH_EVOLUTION_LOG.md) is the chronological evidence log. The M28-A4-0 and M23.x sections below remain **historical checkpoints**, not the current development state. M29.5 is opt-in only for a newly initialized root (`M295_SCIENCE_CHOICE_GATE=YES`); old source-pinned experiments are not silently upgraded.
+<!-- /M293_M295_README_CURRENT_20261112 -->
+
 <!-- M28_A41_SCIENTIFIC_AUTONOMY_EVALUATION_20261109_README -->
-**Latest research-development checkpoint (2026-11-09):** M28-A1/A2/A3 organizational autonomy
+**Historical research-development checkpoint (2026-11-09):** M28-A1/A2/A3 organizational autonomy
 is implemented, and the user reported a successful **no-paid, scripted** A4-0
 end-to-end run at local source `582220c`: two research ROOTs, five PRIMARY
 Controller decisions, one selected cross-root import, zero paid calls.
@@ -11,7 +17,7 @@ established.** The older M23.x section below is historical. Scientific goals:
 [docs/M28_A41_SCIENTIFIC_AUTONOMY_EVALUATION_20261109_KO.md](docs/M28_A41_SCIENTIFIC_AUTONOMY_EVALUATION_20261109_KO.md).
 <!-- /M28_A41_SCIENTIFIC_AUTONOMY_EVALUATION_20261109_README -->
 
-**Current documentation checkpoint: 2026-11-03 (KST).** Active source branch: `dev/m23-2-efficient-development`; verified implementation head before this documentation update: `168d071` (M23.3 metadata projection and reference diagnostics). This README covers the **current development branch**, not a completed scientific result. Earlier V4 snapshot information remains below as historical context.
+**Historical documentation checkpoint: 2026-11-03 (KST).** At that time, active source branch: `dev/m23-2-efficient-development`; verified implementation head before this documentation update: `168d071` (M23.3 metadata projection and reference diagnostics). This README covers the **current development branch**, not a completed scientific result. Earlier V4 snapshot information remains below as historical context.
 
 The mission is a **general-purpose autonomous AI Scientist**. A human supplies an unresolved scientific problem (P0); independent FRESH and informed researchers propose, challenge, calculate, obtain evidence, and generate follow-up work; population-level synthesis determines continuation, branching, or scientifically justified termination. SERS intermittency is the present test case, not the engine's fixed scientific objective. See [PROJECT_VISION.md](PROJECT_VISION.md).
 

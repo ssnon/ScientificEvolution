@@ -386,3 +386,31 @@ Record separately: `IMPLEMENTED` (code exists); `MOCK_VERIFIED` (controlled fixt
   superiority or general AI Scientist scientific competency is claimed.
   [docs/M28_A41_SCIENTIFIC_AUTONOMY_EVALUATION_20261109_KO.md](docs/M28_A41_SCIENTIFIC_AUTONOMY_EVALUATION_20261109_KO.md).
 <!-- /M28_A41_SCIENTIFIC_AUTONOMY_EVALUATION_20261109_LOG -->
+
+<!-- M293_M295_EVIDENCE_CONTINUITY_20261112 -->
+## 2026-11-11 — M29.3 actual DAC/NO3RR autonomous research and triad audit
+
+- **Original source / experiment:** M29.3 runtime at `0b784b4`; `M293_DAC_NO3RR_FRESH_20261111_01`; read-only audit-reported original Journal head `39a78a783451cf8bca3b86eece2aadaf163d063d3995546c045339587668b33b`. The immutable private Journal was not altered for this entry.
+- **Actual execution:** 1,447 events, 323 SAVED model calls, 49 Controller decisions, 48 assets, 32 DONE Work, one PRIMARY ROOT and no organizational requests. Literature tools were invoked 64 times, producing 50 recorded Source items. Three Python-science calls appeared before P14; two contained actual restricted numeric work and one was `planned_not_executed`.
+- **Scientific result / limitation:** P0 remained `UNRESOLVED`; `D00049` chose `HOLD_WITH_RATIONALE`, preserving a scoped lack of catalyst-specific causal evidence rather than claiming no adjacent-pair mechanism exists. `P14_joint_spatial_relay_identifiability` remained a **proposed** typed frontier with joint simultaneous/relay/spatial-nuisance modeling `CALCULATION=NOT_ATTEMPTED`. Earlier limited 2-pole/1-pole comparisons do not prove the joint P14 task redundant.
+- **Prior art:** multiple real original-text and metadata checks were performed, but the precise coverage of all five *discussion-level* discriminator approaches was not established. These five approaches were **not** five separately registered original P14 problems or mandatory ROOTs. Access failure is not literature absence.
+- **Organizational observation:** M28-A1 instructions were present in all 49 saved Controller requests; 48 responses omitted `organization_requests`, one supplied `[]`. No child ROOT was made. This observation does not determine whether a different organization would have produced better science.
+
+## 2026-11-12 — M29.4 no-paid decision-contract counterfactual
+
+- **Artifact:** `M294_CHOICE_CONTRACT_AUDIT.json`. Four *scripted* organization counterfactuals across independent-replication and local-work contexts were accepted. Child ROOTs materialized when a request was scripted and did not appear otherwise. An earlier contract also accepted HOLD without a calculation-specific reason while a synthetic calculation remained `NOT_ATTEMPTED`.
+- **Evidence class:** `MOCK_VERIFIED` / counterfactual runtime and schema diagnosis; **zero provider calls**. This cannot establish a live LLM's organizational judgment or residual-calculation assessment.
+- **Design consequence:** retain genuine optional ROOT creation and scientific freedom to defer redundant calculations; require explicit, reviewable choice reasons rather than forcing ROOT creation or execution of every proposed calculation.
+
+## 2026-11-12 — M29.5 actual blind decisions, Native-validator repair and integration
+
+- **Committed source:** `56aeba8` on `dev/meta-research-autonomy-v1`, six files changed. The new `M295_SCIENCE_CHOICE_GATE=YES` option is activated only in newly initialized/pinned experiments and does not rewrite the M29.3 Journal or source pin.
+- **Engineering delta:** canonical intervention ID/kind/method/scientific contrast; per-intervention prior-art assessment and real source/tool ID checks; terminal HOLD review of pending frontier calculations; model-authored organization-choice reasoning. Existing `literature_research` search/read/supplement functions were **not** reimplemented. Validator checks provenance/consistency and uncertainty, not the truth of the model's scientific comparisons.
+- **Live decision evidence:** six saved LLM blind replies: `CASE_A01=SPAWN_NEW_ROOT`, `CASE_A02=LOCAL_WORK`, `CASE_C02=DEFER_INDEPENDENT`; `CASE_B01` identified an informative calculation, `CASE_B02` a redundant sweep; `CASE_C01/C02` did not certify novelty. Controlled case judgments are not native multi-root E2E or new primary literature research.
+- **Native observation and fixes:** one actual saved Native Controller reply initially failed `M295_PRIOR_ART_COVERAGE_MISMATCH` with no Controller/Program decision appended. Follow-up no-paid diagnosis distinguished an erroneous prohibition on voluntary review of an existing OPEN frontier during ONGOING, then an erroneous verbatim prose identity requirement. The committed corrections allow scoped voluntary reviews and stable registered-ID references, while preserving unverified legacy paraphrase differences and preventing fabricated novelty from scope drift.
+- **Final operator checks:** 399 no-paid regression tests executed; zero failures, one skip (23 focused cases included in the M28/M29 suite). Original saved Native response, **unchanged**, passed `ACCEPTED_NEW_VALIDATOR` and `ACCEPTED_IN_MEMORY_ONLY` in a read-only counterfactual; experiment files and source pin unchanged. This is a **software contract success**, not a historical Journal replay or certified science.
+- **Remaining discriminating experiment:** observe whether a self-chosen computation or independent ROOT yields **actual** native executed evidence, an independent challenge where useful, and a subsequent changed or justified-unchanged Controller judgment. Do not rerun old audits/blind cases as if absent. Any newly paid execution requires explicit approval; verify entrypoint activation, budget and source pins first.
+
+## 2026-11-12 — Documentation synchronization
+
+- **Scope:** README navigation, current DEVELOPMENT_STATE checkpoint, and append-only research-evidence entries. **Scientific delta: NONE**; no runtime/experiment/source-pin files change as part of this synchronization. Older milestones and unsuccessful/rejected episodes remain intact.

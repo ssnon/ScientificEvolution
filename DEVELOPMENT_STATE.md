@@ -1,3 +1,40 @@
+<!-- M293_M295_CURRENT_CHECKPOINT_20261112 -->
+# 2026-11-12 — M29.3–M29.5 current research and implementation checkpoint
+
+**Source / status:** `dev/meta-research-autonomy-v1`, code commit `56aeba8` (2026-11-12 KST). Evidence: operator-supplied M29.3 read-only Journal audits, M29.4 counterfactual report, M29.5 saved LLM probe and Native-controller logs, no-paid regression, and saved-response read-only validation. Private Journals, provider receipts, and source pins are not stored in Git. This checkpoint **does not** certify a scientific discovery or establish causal superiority over the earlier system.
+
+## M29.3 — actual autonomous DAC/NO3RR research (2026-11-11)
+
+- Experiment: `M293_DAC_NO3RR_FRESH_20261111_01`; reported 1,447 Journal events, 323 SAVED model calls, 49 Controller decisions, 48 assets, 32 completed Work, and only the PRIMARY ROOT. No `organization_requests` or materialized child ROOTs. The older read-only audit reported Journal head `39a78a783451cf8bca3b86eece2aadaf163d063d3995546c045339587668b33b`; this documentation operation does **not** reverify or alter the original Journal.
+- Literature tools **already worked**: 64 literature tool calls and 50 recorded Source items (31 bibliographic metadata, 14 OA full-text text *returns*, one figure caption, four supplement-link metadata). Fourteen returns do not mean 14 distinct complete papers. The scientists examined accessible primary text and some existing catalyst controls; source/supplement limitations remain limitations, not evidence of absent experiments. Do not add a second literature-search backend without identifying a distinct missing capability.
+- Typed frontier `P14_joint_spatial_relay_identifiability` was registered at event 1195 with `PROPOSED_NOT_EXECUTED`. Its combined simultaneous / sequential-relay / spatial-local-nuisance / correlated-uncertainty reachable-set calculation remained `CALCULATION=NOT_ATTEMPTED`. Three Python-science calls occurred **before** P14; two ran restricted 2-pole-versus-1-pole numerical comparisons and did **not** execute the full P14 calculation.
+- Final Controller `D00049`: `HOLD_WITH_RATIONALE`, P0 `UNRESOLVED`, evidence-limited pause, **not** a validated mechanistic negative. Missing catalyst-specific measurements could justify pausing final causal attribution, but the information value of the still-untried integrated calculation was not independently settled.
+- M28-A1 organization instructions appeared in all 49 saved Controller requests, while `organization_requests` was absent in 48 replies and empty in one. This proves zero new ROOTs in this run; it does not prove the runtime was unable to create them or that the choice was scientifically optimal.
+
+## M29.4 — contract diagnosis, no paid inference (2026-11-12)
+
+- `M294_CHOICE_CONTRACT_AUDIT.json` tested four **scripted** organization alternatives. Both local-only and requested-child cases were accepted, and a requested child ROOT was materially created in the test environment. A prior HOLD contract accepted an unattempted synthetic calculation without a calculation-specific justification.
+- This is an executable-path and contract diagnostic, **not** evidence of how a live LLM chooses research organization or assesses actual mathematical value. No provider calls were made.
+
+## M29.5 — decision audit, live probes, Native repair (2026-11-12)
+
+- Commit `56aeba8` adds a **new-root opt-in** contract (`M295_SCIENCE_CHOICE_GATE=YES` at init, default NO), not a retroactive change to old M29.3 source pins. New typed frontiers carry canonical `m295_interventions`; per-intervention `prior_art_assessments` record cited existing literature Source/tool IDs and uncertainty. Terminal HOLD covers open frontiers' pending calculations through `remaining_calculation_assessments`; meaningful organization choices use `organization_choice_assessment`. This contract neither searches literature nor certifies the scientific truth of a novelty or calculation claim.
+- Six actual LLM blind-case responses were saved. `CASE_A01` selected `SPAWN_NEW_ROOT`, while `CASE_A02` selected `LOCAL_WORK`; `CASE_B01` favored an informative calculation and `CASE_B02` rejected a redundant sweep; `CASE_C01/C02` withheld unsupported novelty. These are bounded decision probes, not Native multiroot research or independent scientific certification.
+- One actual Native Controller response was saved, initially rejected under `M295_PRIOR_ART_COVERAGE_MISMATCH`. Two successive failures exposed overly restrictive **validator** rules: voluntary prior-art review of an *existing open* frontier during `ONGOING` was rejected, then natural-language rewording of a registered intervention was rejected as changed identity. The fixes accept the voluntary review and bind reviews by immutable registered ID/kind, preserving any legacy echo discrepancy as **unverified**, not silently changing the registered science.
+- User-run no-paid regression: **399 tests run, zero failures, one skip** across M28/M29, continuity, M25, V3, V4 and clean suites. The focused 23 cases are a subset of 162 M28/M29 tests and must not be double-counted. The unchanged saved Native reply passed read-only counterfactual validation as `m295_assessment=ACCEPTED_NEW_VALIDATOR` and `full_native_plan=ACCEPTED_IN_MEMORY_ONLY`. The original rejected decision was **not** appended retroactively to the historical Journal; this did not execute Work or produce a scientific discovery.
+
+## Verified boundary / precise next question
+
+**ENGINEERING VERIFIED:** synthetic requested-child ROOT materialization, limited real-LLM organizational/calculation/prior-art distinctions, M29.5 contract integration, no-paid regression and in-memory acceptance of the unchanged saved Native response.
+
+**NOT SCIENTIFICALLY VERIFIED:** in a **new source-pinned Native autonomous run**, whether a self-chosen calculation becomes actually executed Python/tool evidence and changes later scientific judgments; whether a self-chosen ROOT is created, researches independently, returns a critique and influences the parent; whether each new discriminator is correctly contrasted against genuinely inspected prior methods. The P14 unexecuted calculation is a known M29.3 baseline gap, **not** an unperformed M29.5 regression test.
+
+**Avoid duplicated work:** do not repeat the M29.3 triad audit, M29.4 scripted choice comparison, or M29.5 six blind probes as new milestones. The next discriminating observation is the complete **scientific choice → actual Work/ROOT or tool execution → evidence/criticism → later Controller uptake** chain. Preserve original source pins and Journals, impose no mandatory peer count or arbitrary computation quota, and require explicit approval before new paid calls.
+
+**Still OPEN:** canonical activation/budget continuity across all research entrypoints and spawned roots. The earlier M28 activation-continuity note below remains applicable; an M29.5 documentation update does not close it.
+
+---
+
 
 <!-- M28_ACTIVATION_DEFAULT_INTEGRATION_REQUIREMENT_20261109 -->
 ## M28 activation continuity — future unified default (OPEN)
