@@ -67,6 +67,10 @@ def init(args):
     guard(budget_source.is_file(), 'META_ORG_BUDGET_FILE_REQUIRED_AT_INIT')
     budget_payload = json.loads(budget_source.read_text(encoding='utf8'))
     guard(isinstance(budget_payload, dict), 'META_ORG_BUDGET_NOT_OBJECT')
+    from e2core.m295_decision_contract import FLAG as M295_FLAG
+    m295_switch=os.environ.get('M295_SCIENCE_CHOICE_GATE','NO')
+    guard(m295_switch in {'YES','NO'},'M295_GATE_ENV_MUST_BE_YES_OR_NO')
+    m295_enabled=m295_switch=='YES'
     exp.mkdir(parents=True)
     try:
         root = exp / 'ROOTS' / 'PRIMARY'
@@ -85,6 +89,7 @@ def init(args):
         _save_new(exp / 'persistent.json', {'protocol': PROTOCOL,
                   'science_certification': False, 'meta_autonomy_enabled': True,
                   FRONTIER_FLAG: True,
+                  **({M295_FLAG:True} if m295_enabled else {}),
                   'activation_profile': profile,
                   'activation_profile_sha256': activation_digest(profile),
                   'budget_config_sha256': budget_sha})
@@ -94,6 +99,7 @@ def init(args):
                   'researcher_count_not_preselected': True,
                   'mandatory_generations': False, 'mandatory_synthesis': False,
                   FRONTIER_FLAG: True,
+                  **({M295_FLAG:True} if m295_enabled else {}),
                   'activation_profile_sha256': activation_digest(profile),
                   'budget_config_sha256': budget_sha})
         # Verify the effective M25 activation/budget contract before pinning.
@@ -104,6 +110,9 @@ def init(args):
         # operational provenance event, NOT an automatic scientific assertion.
         from e2core.m291_frontier_contract import register_general_root
         register_general_root(j)
+        if m295_enabled:
+            from e2core.m295_decision_contract import register_new_root
+            register_new_root(j)
         guard(j.verify().meta_research_autonomy, 'META_ORG_ACTIVATION_FAILED')
         print(json.dumps({'status': 'META_ORG_INITIALIZED_NO_PAID', 'root': str(root),
                           'source_pinned_files': len(pin['files'])}, ensure_ascii=False))
@@ -136,6 +145,10 @@ def _preflight(exp, meta):
     guard(not required or (persistent.get(GENERAL_FLAG) is True and
                           meta.get(GENERAL_FLAG) is True),
           'M293_PREFLIGHT_FRONTIER_FLAG_DRIFT')
+    from e2core.m295_decision_contract import FLAG as M295_FLAG, active as m295_active
+    require_m295=(persistent.get(M295_FLAG) is True or meta.get(M295_FLAG) is True)
+    guard(not require_m295 or (persistent.get(M295_FLAG) is True and
+          meta.get(M295_FLAG) is True), 'M295_PREFLIGHT_MANIFEST_FLAG_DRIFT')
     observations = {}
     for subroot in _roots(exp):
         j = EvolutionJournal(subroot)
@@ -148,6 +161,8 @@ def _preflight(exp, meta):
             verify_runtime_source(m, subroot)
         if required:
             guard(frontier_active(j), 'M293_PREFLIGHT_FRONTIER_CONTRACT_NOT_ACTIVE')
+        if require_m295:
+            guard(m295_active(j), 'M295_PREFLIGHT_CHOICE_CONTRACT_NOT_ACTIVE')
         observations[subroot.name] = {'decisions': len(s.controller_decisions),
                                       'works': len(s.work),
                                       'requests': len(s.organization_requests),

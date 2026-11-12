@@ -512,6 +512,8 @@ def controller_plan(j:EvolutionJournal, raw_obj:dict, call_id:str,decision_id:st
         for proposed in prepared_problems:
             if isinstance(proposed,dict) and 'research_frontier' in proposed:
                 validate_spec(proposed['research_frontier'],s)
+    from .m295_decision_contract import validate_decision as _m295_validate
+    m295_record=_m295_validate(j,s,raw_obj,prepared_problems)
     planned=[]
     for p in _ordered_new_problems(s.problems.keys(),prepared_problems):
         planned.append(('PROBLEM_CREATED',p))
@@ -587,6 +589,8 @@ def controller_plan(j:EvolutionJournal, raw_obj:dict, call_id:str,decision_id:st
             review['m29_research_frontier_assessment']=m29_assessment
     if m23_translations:
         review['m23_verified_reference_translation']=m23_translations
+    if m295_record is not None:
+        review['m295_model_authored_decision_audit']=m295_record
     planned.append(('PROGRAM_REVIEWED',review))
     if assessment is not None:planned.append(('PROGRAM_OBJECTIVE_ASSESSED',assessment))
     org_requests=raw_obj.get('organization_requests',[])
@@ -926,12 +930,19 @@ def effective_controller_contract(j, base_prompt, base_context):
             # This is model-visible ONLY in the explicitly pinned successor.
             # The model remains free to choose scientific HOLD with no new Work.
             prompt=M291_PRELUDE+'\n'+prompt+'\n'+M291_PRELUDE
+    from .m295_decision_contract import active as _m295_active, PRELUDE as _M295_PRELUDE
+    if _m295_active(j):
+        prompt=_M295_PRELUDE+'\n'+prompt+'\nM29.5: do not omit per-intervention prior-art, residual-calculation, or organization choice assessments.'
     # Real, independently recorded child reports remain fallible prior AI.
     # This field must be available even in the ON_DEMAND/COMPACT/SEPARATE view.
     guard('meta_research_organization_context' not in base_context,
           'META_CONTROLLER_CONTEXT_ALREADY_APPLIED')
-    return prompt,{**base_context,
-                   'meta_research_organization_context':meta_organization_context(j)}
+    context={**base_context,
+             'meta_research_organization_context':meta_organization_context(j)}
+    if _m295_active(j):
+        from .m295_decision_contract import literature_source_index
+        context['m295_prior_art_source_index']=literature_source_index(j)
+    return prompt,context
 
 
 class Engine:
